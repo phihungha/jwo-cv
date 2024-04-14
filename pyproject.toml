@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "jwo-cv"
+version = "0.1.0"
+description = "Computer Vision component of Just-Walk-Out Shopping System"
+authors = ["Ha Phi Hung <haphihung55@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+opencv-python = "^4.9.0.80"
+ultralytics = "^8.1.47"
+Flask = "^3.0.3"
+
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.3.7"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

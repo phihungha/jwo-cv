@@ -1,0 +1,8 @@
+# Editors & IDEs
+.vscode/
+.idea/
+*.code-workspace
+*.swp
+
+# Byte-compiled / optimized / DLL files
+__pycache__/

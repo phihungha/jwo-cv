@@ -1,0 +1,16 @@
+# Editors & IDEs
+.vscode/
+.idea/
+*.code-workspace
+*.swp
+
+# Git
+.git
+.gitignore
+
+# Docker
+docker-compose.yml
+.docker
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
