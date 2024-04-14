@@ -8,7 +8,7 @@ from jwo_cv import info
 from jwo_cv.item_classifier import ItemClassifier
 
 
-logger = logging.Logger("jwo-cv")
+logger = logging.getLogger("jwo-cv")
 
 
 def getVideoSource(source_idx: int) -> cv2.VideoCapture:
