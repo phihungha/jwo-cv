@@ -67,7 +67,7 @@ def processVideoWithDebug(source: cv2.VideoCapture, item_classifier: ItemClassif
 
         annotator = plotting.Annotator(image)
         for item in items:
-            logger.error(item)
+            logger.debug(item)
             annotator.box_label(
                 item.box.tensor,
                 f"{item.class_name} ({round(item.confidence, 3):.1%})",
