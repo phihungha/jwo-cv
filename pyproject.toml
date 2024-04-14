@@ -11,6 +11,7 @@ python = "^3.12"
 opencv-python = "^4.9.0.80"
 ultralytics = "^8.1.47"
 Flask = "^3.0.3"
+toml = "^0.10.2"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.3.7"

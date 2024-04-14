@@ -712,6 +712,9 @@ sympy==1.12 ; python_version >= "3.12" and python_version < "4.0" \
     --hash=sha256:ebf595c8dac3e0fdc4152c51878b498396ec7f30e7a914d6071e674d49420fb8
 thop==0.1.1.post2209072238 ; python_version >= "3.12" and python_version < "4.0" \
     --hash=sha256:01473c225231927d2ad718351f78ebf7cffe6af3bed464c4f1ba1ef0f7cdda27
+toml==0.10.2 ; python_version >= "3.12" and python_version < "4.0" \
+    --hash=sha256:806143ae5bfb6a3c6e736a764057db0e6a0e05e338b5630894a5f779cabb4f9b \
+    --hash=sha256:b3bda1d108d5dd99f4a20d24d9c348e91c4db7ab1b749200bded2f839ccbe68f
 torch==2.2.2 ; python_version >= "3.12" and python_version < "4.0" \
     --hash=sha256:11e8fe261233aeabd67696d6b993eeb0896faa175c6b41b9a6c9f0334bdad1c5 \
     --hash=sha256:15dffa4cc3261fa73d02f0ed25f5fa49ecc9e12bf1ae0a4c1e7a88bbfaad9030 \

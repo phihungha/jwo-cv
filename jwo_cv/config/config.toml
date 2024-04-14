@@ -1,0 +1,18 @@
+[video_sources]
+source_idx = 0
+
+[models]
+item_classifier_model_path = "jwo_cv/config/item_yolov8n.pt"
+
+[logging]
+version = 1
+
+[logging.root]
+level = "DEBUG"
+handlers = ["console"]
+
+[logging.handlers]
+[logging.handlers.console]
+class = "logging.StreamHandler"
+level = "DEBUG"
+stream = "ext://sys.stdout"
