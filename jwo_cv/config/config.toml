@@ -1,3 +1,6 @@
+[general]
+debug_video = true
+
 [video_sources]
 source_idx = 0
 
@@ -11,8 +14,13 @@ version = 1
 level = "DEBUG"
 handlers = ["console"]
 
+[logging.formatters]
+[logging.formatters.DefaultFormat]
+format = "[%(asctime)s %(name)s %(levelname)s] %(message)s"
+
 [logging.handlers]
 [logging.handlers.console]
 class = "logging.StreamHandler"
+formatter = "DefaultFormat"
 level = "DEBUG"
 stream = "ext://sys.stdout"
