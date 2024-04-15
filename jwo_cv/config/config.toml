@@ -3,9 +3,12 @@ debug_video = true
 
 [video_sources]
 source_idx = 0
+resolution = [500, 500]
 
 [models]
-item_classifier_model_path = "jwo_cv/config/item_yolov8n.pt"
+item_detector_model_path = "jwo_cv/config/item_yolov8n.pt"
+max_hand_distance = 50
+hand_detector_model_path = "jwo_cv/config/hand_yolov8n.pt"
 
 [logging]
 version = 1
