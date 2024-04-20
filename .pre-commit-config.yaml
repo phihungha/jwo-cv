@@ -9,5 +9,5 @@ repos:
     rev: "1.8.2"
     hooks:
       - id: poetry-export
-        args: ["-f", "requirements.txt", "-o", "requirements.txt"]
+        args: ["-o", "requirements.txt"]
         verbose: true
