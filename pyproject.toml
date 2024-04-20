@@ -7,11 +7,11 @@ readme = "README.md"
 package-mode = false
 
 [tool.poetry.dependencies]
-python = "^3.12"
+python = "~3.11"
 opencv-python = "^4.9.0.80"
-ultralytics = "^8.1.47"
 Flask = "^3.0.3"
 toml = "^0.10.2"
+pyyaml = "^6.0.1"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.3.7"
