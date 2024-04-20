@@ -3,12 +3,14 @@ debug_video = true
 
 [video_sources]
 source_idx = 0
-resolution = [500, 500]
+size = [640, 640]
 
-[models]
-item_detector_model_path = "jwo_cv/config/item_yolov8n.pt"
+[detectors]
+[detectors.item_detector]
+model_path = "jwo_cv/config/item_yolov8n.onnx"
+label_path = "jwo_cv/config/item_labels.yml"
+min_confidence = 0.5
 max_hand_distance = 50
-hand_detector_model_path = "jwo_cv/config/hand_yolov8n.pt"
 
 [logging]
 version = 1
