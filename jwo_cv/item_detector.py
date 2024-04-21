@@ -1,13 +1,10 @@
 from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Mapping, Sequence
-import cv2
 from cv2.typing import MatLike
 import numpy as np
-import yaml
+from ultralytics import YOLO
 from jwo_cv import utils
-
-PERSON_CLASS_ID = 0
 
 
 @dataclass(frozen=True)
@@ -26,22 +23,17 @@ class Detector:
     def __init__(
         self,
         model_path: str,
-        labels: Mapping[int, str],
-        image_size: utils.Size,
         min_confidence: float,
     ) -> None:
         """An OpenCV-based object detector.
 
         Args:
             model_path (str): Path to model file
-            labels (Mapping[int, str]): Class-to-label map
             image_size (utils.ImageSize): Size of image to detect from
             min_confidence (float): Minimum confidence of detections to use
         """
 
-        self.model = cv2.dnn.readNetFromONNX(model_path)
-        self.labels = labels
-        self.image_size = image_size
+        self.model = YOLO(model_path)
         self.min_confidence = min_confidence
 
     def detect(self, image: MatLike) -> list[Detection]:
@@ -54,36 +46,21 @@ class Detector:
             list[ItemDetection]: Detections
         """
 
-        self.model.setInput(image)
-        outputs = self.model.forward()
-        outputs = np.array([cv2.transpose(outputs[0])])[0]
+        outputs = self.model.predict(image, verbose=False)
+        detections: list[Detection] = []
 
-        boxes = []
-        scores = []
-        class_ids = []
         for output in outputs:
-            class_scores = output[4:]
-            (_, max_score, _, (_, max_class_id)) = cv2.minMaxLoc(class_scores)
+            for result in output.boxes:
+                confidence = float(result.conf)
+                if confidence < self.min_confidence:
+                    continue
 
-            box = [
-                output[0] - (0.5 * output[2]),
-                output[1] - (0.5 * output[3]),
-                output[2],
-                output[3],
-            ]
-            boxes.append(box)
-            scores.append(max_score)
-            class_ids.append(max_class_id)
+                class_name = self.model.names[int(result.cls)]
+                box = utils.BoundingBox.from_xyxy_arr(result.xyxy[0])
+                detection = Detection(class_name, confidence, box)
+                detections.append(detection)
 
-        box_indexes = cv2.dnn.NMSBoxes(boxes, scores, self.min_confidence, 0.5, 0.5)
-
-        def to_detection(idx):
-            class_name = self.labels[class_ids[idx]]
-            confidence = scores[idx]
-            box = utils.BoundingBox.from_xyhw_array(boxes[idx])
-            return Detection(class_name, confidence, box)
-
-        return list(map(to_detection, box_indexes))
+        return detections
 
 
 class HandDetector:
@@ -98,7 +75,7 @@ class HandDetector:
 
         hands: list[Detection] = []
         confidence = 1
-        box = utils.BoundingBox.from_xyhw_array(np.array([300, 300, 150, 150]))
+        box = utils.BoundingBox.from_xyxy_arr(np.array([300, 300, 150, 150]))
         pred_result = Detection("hand", confidence, box)
         hands.append(pred_result)
 
@@ -111,36 +88,30 @@ class ItemDetector(Detector):
     def __init__(
         self,
         model_path: str,
-        labels: Mapping[int, str],
-        image_size: utils.Size,
         min_confidence: float,
         max_hand_distance: float,
+        exclude_class_names: Sequence[str],
     ) -> None:
         """Detect and classifies product items in an image.
 
         Args:
             model_path (str): Path to model file
-            labels (Mapping[int, str]): Class-to-label map
             image_size (utils.ImageSize): Size of image to detect from
             min_confidence (float): Minimum confidence of detections to use
             max_hand_distance (float): Max distance from hands to detect items
         """
 
-        super().__init__(model_path, labels, image_size, min_confidence)
+        super().__init__(model_path, min_confidence)
         self.max_hand_distance = max_hand_distance
+        self.exclude_class_name = exclude_class_names
 
     @classmethod
-    def from_config(
-        cls, config: Mapping[str, Any], image_size: utils.Size
-    ) -> ItemDetector:
-        with open(config["label_path"], "r") as file:
-            labels = yaml.safe_load(file)
+    def from_config(cls, config: Mapping[str, Any]) -> ItemDetector:
         return cls(
             config["model_path"],
-            labels,
-            image_size,
             config["min_confidence"],
             config["max_hand_distance"],
+            config["exclude_class_names"],
         )
 
     def detect(
@@ -158,12 +129,16 @@ class ItemDetector(Detector):
 
         detections = super().detect(image)
 
-        return list(
-            filter(
-                lambda i: any(
-                    i.box.calcDistance(mask) < self.max_hand_distance
-                    for mask in mask_boxes
-                ),
-                detections,
-            )
-        )
+        def filterItem(detection: Detection):
+            if detection.class_name in self.exclude_class_name:
+                return False
+
+            if not any(
+                detection.box.calcDistance(mask) <= self.max_hand_distance
+                for mask in mask_boxes
+            ):
+                return False
+
+            return True
+
+        return list(filter(filterItem, detections))
