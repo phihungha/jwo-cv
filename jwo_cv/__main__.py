@@ -47,7 +47,7 @@ def processVideo(
         if not received:
             logger.error("Can't receive frame!")
 
-        hands = hand_detector.detect()
+        hands = hand_detector.detect(image)
         hand_boxes = list(map(lambda i: i.box, hands))
 
         items = item_detector.detect(image, hand_boxes)
@@ -77,7 +77,7 @@ def processVideoWithDebug(
 
         annotator = plotting.Annotator(image)
 
-        hands = hand_detector.detect()
+        hands = hand_detector.detect(image)
         hand_boxes = list(map(lambda i: i.box, hands))
         for box in hand_boxes:
             annotator.box_label(
@@ -117,7 +117,7 @@ def main():
 
     detectors_config = config["detectors"]
     item_detector = ItemDetector.from_config(detectors_config["item_detector"])
-    hand_detector = HandDetector()
+    hand_detector = HandDetector.from_config(detectors_config["hand_detector"])
 
     if general_config["debug_video"]:
         processVideoWithDebug(video_source, item_detector, hand_detector)

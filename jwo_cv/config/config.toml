@@ -12,6 +12,11 @@ exclude_class_names = ["person"]
 min_confidence = 0.5
 max_hand_distance = 80
 
+[detectors.hand_detector]
+model_config_path = "jwo_cv/config/hand_yolov3.cfg"
+model_weight_path = "jwo_cv/config/hand_yolov3.weights"
+min_confidence = 0.5
+
 [logging]
 version = 1
 

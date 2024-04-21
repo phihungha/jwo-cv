@@ -2,7 +2,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Mapping, Sequence
 from cv2.typing import MatLike
-import numpy as np
 from ultralytics import YOLO
 from jwo_cv import utils
 
@@ -22,18 +21,18 @@ class Detector:
 
     def __init__(
         self,
-        model_path: str,
+        model: YOLO,
         min_confidence: float,
     ) -> None:
         """An OpenCV-based object detector.
 
         Args:
-            model_path (str): Path to model file
+            model (str): Model
             image_size (utils.ImageSize): Size of image to detect from
             min_confidence (float): Minimum confidence of detections to use
         """
 
-        self.model = YOLO(model_path)
+        self.model = model
         self.min_confidence = min_confidence
 
     def detect(self, image: MatLike) -> list[Detection]:
@@ -63,23 +62,16 @@ class Detector:
         return detections
 
 
-class HandDetector:
+class HandDetector(Detector):
     """Detects hands in an image."""
 
-    def detect(self) -> list[Detection]:
-        """Detect hands in an image.
-
-        Returns:
-            list[Detection]: Detections
-        """
-
-        hands: list[Detection] = []
-        confidence = 1
-        box = utils.BoundingBox.from_xyxy_arr(np.array([300, 300, 150, 150]))
-        pred_result = Detection("hand", confidence, box)
-        hands.append(pred_result)
-
-        return hands
+    @classmethod
+    def from_config(cls, config: Mapping) -> HandDetector:
+        model = YOLO(config["model_config_path"])
+        return cls(
+            model,
+            config["min_confidence"],
+        )
 
 
 class ItemDetector(Detector):
@@ -87,7 +79,7 @@ class ItemDetector(Detector):
 
     def __init__(
         self,
-        model_path: str,
+        model: YOLO,
         min_confidence: float,
         max_hand_distance: float,
         exclude_class_names: Sequence[str],
@@ -101,14 +93,15 @@ class ItemDetector(Detector):
             max_hand_distance (float): Max distance from hands to detect items
         """
 
-        super().__init__(model_path, min_confidence)
+        super().__init__(model, min_confidence)
         self.max_hand_distance = max_hand_distance
         self.exclude_class_name = exclude_class_names
 
     @classmethod
     def from_config(cls, config: Mapping[str, Any]) -> ItemDetector:
+        model = YOLO(config["model_path"])
         return cls(
-            config["model_path"],
+            model,
             config["min_confidence"],
             config["max_hand_distance"],
             config["exclude_class_names"],
