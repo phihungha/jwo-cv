@@ -27,7 +27,7 @@ class Detector:
         """An OpenCV-based object detector.
 
         Args:
-            model (str): Model
+            model (YOLO): Ultralytics YOLO model
             image_size (utils.ImageSize): Size of image to detect from
             min_confidence (float): Minimum confidence of detections to use
         """
@@ -67,11 +67,24 @@ class HandDetector(Detector):
 
     @classmethod
     def from_config(cls, config: Mapping) -> HandDetector:
-        model = YOLO(config["model_config_path"])
+        model = YOLO(config["model_path"])
         return cls(
             model,
             config["min_confidence"],
         )
+
+    def detect(self, image: MatLike) -> list[Detection]:
+        """Detect hands.
+
+        Args:
+            image (MatLike): Image
+
+        Returns:
+            list[ItemDetection]: Detections
+        """
+
+        detections = super().detect(image)
+        return list(filter(lambda d: d.class_name == "person", detections))
 
 
 class ItemDetector(Detector):
@@ -87,7 +100,7 @@ class ItemDetector(Detector):
         """Detect and classifies product items in an image.
 
         Args:
-            model_path (str): Path to model file
+            model (str): Ultralytics YOLO model
             image_size (utils.ImageSize): Size of image to detect from
             min_confidence (float): Minimum confidence of detections to use
             max_hand_distance (float): Max distance from hands to detect items
@@ -122,16 +135,13 @@ class ItemDetector(Detector):
 
         detections = super().detect(image)
 
-        def filterItem(detection: Detection):
-            if detection.class_name in self.exclude_class_name:
-                return False
+        def filter_item(detection: Detection):
+            is_not_excluded = detection.class_name not in self.exclude_class_name
+            overlap_at_least_one_mask = any(
+                detection.box.check_overlap_box(box)
+                or box.check_overlap_box(detection.box)
+                for box in mask_boxes
+            )
+            return is_not_excluded and overlap_at_least_one_mask
 
-            if not any(
-                detection.box.calcDistance(mask) <= self.max_hand_distance
-                for mask in mask_boxes
-            ):
-                return False
-
-            return True
-
-        return list(filter(filterItem, detections))
+        return list(filter(filter_item, detections))
