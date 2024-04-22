@@ -1,4 +1,5 @@
 [general]
+debug_log = false
 debug_video = true
 
 [video_sources]
@@ -6,29 +7,13 @@ source_idx = 0
 size = [640, 640]
 
 [detectors]
-[detectors.item_detector]
-model_path = "jwo_cv/config/item_yolov8n.pt"
+[detectors.action]
+min_confidence = 0.5
+stream_buffer_duration_sec = 5
+
+[detectors.item]
 min_confidence = 0.3
 max_hand_distance = 150
 
-[detectors.hand_detector]
-model_path = "jwo_cv/config/item_yolov8n.pt"
+[detectors.hand]
 min_confidence = 0.3
-
-[logging]
-version = 1
-
-[logging.root]
-level = "DEBUG"
-handlers = ["console"]
-
-[logging.formatters]
-[logging.formatters.DefaultFormat]
-format = "[%(asctime)s %(name)s %(levelname)s] %(message)s"
-
-[logging.handlers]
-[logging.handlers.console]
-class = "logging.StreamHandler"
-formatter = "DefaultFormat"
-level = "DEBUG"
-stream = "ext://sys.stdout"

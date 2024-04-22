@@ -1,10 +1,12 @@
 from __future__ import annotations
 from dataclasses import dataclass
-from typing import Any, Mapping, Sequence
+from typing import Sequence
 from cv2.typing import MatLike
 from ultralytics import YOLO
 from jwo_cv import utils
 
+ITEM_DETECTOR_MODEL_PATH = "jwo_cv/config/item_yolov8n.pt"
+HAND_DETECTOR_MODEL_PATH = "jwo_cv/config/item_yolov8n.pt"
 PERSON_LABEL = "person"
 
 
@@ -16,6 +18,9 @@ class Detection:
     class_name: str
     confidence: float
     box: utils.BoundingBox
+
+    def __str__(self) -> str:
+        return f"{{class_name: {self.class_name}, confidence: {self.confidence}, box: {self.box}}}"
 
 
 class Detector:
@@ -68,8 +73,8 @@ class HandDetector(Detector):
     """Detects hands in an image."""
 
     @classmethod
-    def from_config(cls, config: Mapping) -> HandDetector:
-        model = YOLO(config["model_path"])
+    def from_config(cls, config: utils.Config) -> HandDetector:
+        model = YOLO(ITEM_DETECTOR_MODEL_PATH)
         return cls(
             model,
             config["min_confidence"],
@@ -110,8 +115,8 @@ class ItemDetector(Detector):
         self.max_hand_distance = max_hand_distance
 
     @classmethod
-    def from_config(cls, config: Mapping[str, Any]) -> ItemDetector:
-        model = YOLO(config["model_path"])
+    def from_config(cls, config: utils.Config) -> ItemDetector:
+        model = YOLO(ITEM_DETECTOR_MODEL_PATH)
         return cls(
             model,
             config["min_confidence"],

@@ -1,10 +1,13 @@
 from __future__ import annotations
 from dataclasses import dataclass
 import math
-from typing import Sequence
+from typing import Any, Mapping, Sequence
 
 import numpy as np
 from numpy import typing as np_types
+
+
+Config = Mapping[str, Any]
 
 
 @dataclass(frozen=True)

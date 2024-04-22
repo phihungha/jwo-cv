@@ -14,6 +14,7 @@ toml = "^0.10.2"
 ultralytics = "^8.2.2"
 torch = "^2.2.2"
 torchvision = "^0.17.2"
+movinet-pytorch = {git = "https://github.com/Atze00/MoViNet-pytorch.git"}
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.3.7"
