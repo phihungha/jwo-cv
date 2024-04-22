@@ -1,5 +1,6 @@
 from __future__ import annotations
 from dataclasses import dataclass
+import math
 from typing import Sequence
 
 import numpy as np
@@ -50,12 +51,14 @@ class BoundingBox:
         """
 
         self.top_left = top_left
-        self.top_right = Position(bot_right.x, top_left.y)
-        self.bot_left = Position(top_left.x, bot_right.y)
         self.bot_right = bot_right
 
+        center_x = bot_right.x - (bot_right.x - top_left.x) / 2
+        center_y = bot_right.y - (bot_right.y - top_left.y) / 2
+        self.center = Position(round(center_x), round(center_y))
+
     def __str__(self) -> str:
-        return f"{{top_left: {self.top_left}, bot_right: {self.bot_right}}}"
+        return f"{{top_left: {self.top_left}, bot_right: {self.bot_right}, center: {self.center}}}"
 
     @classmethod
     def from_xyxy_arr(cls, array: np_types.NDArray | Sequence[int]) -> BoundingBox:
@@ -74,13 +77,5 @@ class BoundingBox:
             ]
         )
 
-    def check_overlap_box(self, box: BoundingBox) -> bool:
-        overlaps_horizontal = (
-            self.top_left.x <= box.top_left.x <= self.top_right.x
-            or self.top_left.x <= box.top_right.x <= self.top_right.x
-        )
-        overlaps_vertical = (
-            self.top_left.y <= box.top_left.y <= self.bot_left.y
-            or self.top_left.y <= box.bot_left.y <= self.bot_left.y
-        )
-        return overlaps_horizontal and overlaps_vertical
+    def calc_distance(self, box: BoundingBox) -> float:
+        return math.dist(self.center.to_xy_arr(), box.center.to_xy_arr())

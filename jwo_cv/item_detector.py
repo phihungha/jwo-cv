@@ -5,6 +5,8 @@ from cv2.typing import MatLike
 from ultralytics import YOLO
 from jwo_cv import utils
 
+PERSON_LABEL = "person"
+
 
 @dataclass(frozen=True)
 class Detection:
@@ -84,7 +86,7 @@ class HandDetector(Detector):
         """
 
         detections = super().detect(image)
-        return list(filter(lambda d: d.class_name == "person", detections))
+        return list(filter(lambda d: d.class_name == PERSON_LABEL, detections))
 
 
 class ItemDetector(Detector):
@@ -95,20 +97,17 @@ class ItemDetector(Detector):
         model: YOLO,
         min_confidence: float,
         max_hand_distance: float,
-        exclude_class_names: Sequence[str],
     ) -> None:
         """Detect and classifies product items in an image.
 
         Args:
             model (str): Ultralytics YOLO model
-            image_size (utils.ImageSize): Size of image to detect from
             min_confidence (float): Minimum confidence of detections to use
             max_hand_distance (float): Max distance from hands to detect items
         """
 
         super().__init__(model, min_confidence)
         self.max_hand_distance = max_hand_distance
-        self.exclude_class_name = exclude_class_names
 
     @classmethod
     def from_config(cls, config: Mapping[str, Any]) -> ItemDetector:
@@ -117,7 +116,6 @@ class ItemDetector(Detector):
             model,
             config["min_confidence"],
             config["max_hand_distance"],
-            config["exclude_class_names"],
         )
 
     def detect(
@@ -136,12 +134,12 @@ class ItemDetector(Detector):
         detections = super().detect(image)
 
         def filter_item(detection: Detection):
-            is_not_excluded = detection.class_name not in self.exclude_class_name
-            overlap_at_least_one_mask = any(
-                detection.box.check_overlap_box(box)
-                or box.check_overlap_box(detection.box)
+            # Re-configure model without person class
+            is_not_person = detection.class_name != PERSON_LABEL
+            is_near_hand = any(
+                detection.box.calc_distance(box) <= self.max_hand_distance
                 for box in mask_boxes
             )
-            return is_not_excluded and overlap_at_least_one_mask
+            return is_not_person and is_near_hand
 
         return list(filter(filter_item, detections))

@@ -78,15 +78,15 @@ def processVideoWithDebug(
         annotator = plotting.Annotator(image)
 
         hands = hand_detector.detect(image)
-        hand_boxes = list(map(lambda i: i.box, hands))
-        for box in hand_boxes:
+        for hand in hands:
             annotator.box_label(
-                box.to_xyxy_arr(),
-                "Hand",
+                hand.box.to_xyxy_arr(),
+                f"Hand ({round(hand.confidence, 3):.1%})",
                 info.HAND_ANNOTATION_BOX_COLOR,
                 info.ANNOTATION_TEXT_COLOR,
             )
 
+        hand_boxes = list(map(lambda i: i.box, hands))
         items = item_detector.detect(image, hand_boxes)
         for item in items:
             logger.debug(item)
