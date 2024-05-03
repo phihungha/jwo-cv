@@ -1,11 +1,11 @@
 from __future__ import annotations
-from dataclasses import dataclass
+
 import math
+from dataclasses import dataclass
 from typing import Any, Mapping, Sequence
 
 import numpy as np
 from numpy import typing as np_types
-
 
 Config = Mapping[str, Any]
 
@@ -65,7 +65,10 @@ class BoundingBox:
         self.center = Position(round(center_x), round(center_y))
 
     def __str__(self) -> str:
-        return f"{{top_left: {self.top_left}, bot_right: {self.bot_right}, center: {self.center}}}"
+        return (
+            f"{{top_left: {self.top_left}, bot_right: {self.bot_right}, "
+            f"center: {self.center}}}"
+        )
 
     @classmethod
     def from_xyxy_arr(cls, array: np_types.NDArray | Sequence[int]) -> BoundingBox:

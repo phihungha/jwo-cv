@@ -1,16 +1,16 @@
-from dataclasses import dataclass
 import logging
 import logging.config
+from dataclasses import dataclass
 from typing import Iterator, Sequence
-import cv2
-from cv2.typing import MatLike
-import toml
 
+import cv2
+import toml
 import torch
+from cv2.typing import MatLike
 from ultralytics.utils import plotting
 
-from jwo_cv import info
 from jwo_cv import action_detector as ad
+from jwo_cv import info
 from jwo_cv import item_detector as id
 from jwo_cv.utils import AppException, Size
 

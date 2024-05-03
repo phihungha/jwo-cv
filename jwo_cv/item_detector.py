@@ -1,5 +1,7 @@
 from __future__ import annotations
+
 from dataclasses import dataclass
+
 from cv2.typing import MatLike
 from ultralytics import YOLO
 
@@ -22,7 +24,10 @@ class Detection:
     box: BoundingBox
 
     def __str__(self) -> str:
-        return f"{{class_id: {self.class_id}, class_name: {self.class_name}, confidence: {self.confidence}, box: {self.box}}}"
+        return (
+            f"{{class_id: {self.class_id}, class_name: {self.class_name}, "
+            f"confidence: {self.confidence}, box: {self.box}}}"
+        )
 
 
 class Detector:

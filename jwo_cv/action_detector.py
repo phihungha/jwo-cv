@@ -1,17 +1,17 @@
 from __future__ import annotations
-from dataclasses import dataclass
-from enum import Enum
+
 import logging
 import time
+from dataclasses import dataclass
+from enum import Enum
 
+import movinets
 import movinets.config
 import torch
-from torchvision.transforms import v2 as transforms
 from cv2.typing import MatLike
-import movinets
+from torchvision.transforms import v2 as transforms
 
 from jwo_cv.utils import Config
-
 
 # Model config reference: https://github.com/Atze00/MoViNet-pytorch
 MODEL_CONFIG = movinets.config._C.MODEL.MoViNetA2
@@ -37,7 +37,10 @@ class Action:
     confidence: float
 
     def __str__(self) -> str:
-        return f"{{class_id: {self.class_id}, type: {self.type}, confidence: {self.confidence}}}"
+        return (
+            f"{{class_id: {self.class_id}, type: {self.type}, "
+            f"confidence: {self.confidence}}}"
+        )
 
 
 class ActionClassifier:
