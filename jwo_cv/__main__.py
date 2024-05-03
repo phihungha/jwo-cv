@@ -171,10 +171,11 @@ def main():
     if use_debug_video:
         cv2.namedWindow("Debug")
 
+    # NOTE: Find a way to pass this generator into the API function.
     shopping_event_generator = processVideo(
         video_source, action_classifier, item_detector, use_debug_video
     )
-
+    # NOTE: Do this in the API function.
     for event in shopping_event_generator:
         logger.info(event)
 
