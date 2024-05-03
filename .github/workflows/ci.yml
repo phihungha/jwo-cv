@@ -32,6 +32,6 @@ jobs:
       - name: Install project
         run: poetry install
       - name: Lint
-        run: poetry run ruff check
+        run: poetry run ruff check .
       - name: Check formatting
-        run: poetry run ruff format --check
+        run: poetry run ruff format --check .
