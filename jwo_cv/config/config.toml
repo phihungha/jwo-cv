@@ -8,7 +8,7 @@ size = [640, 640]
 
 [detectors]
 [detectors.action]
-min_confidence = 0.5
+min_confidence = 0.7
 stream_buffer_duration_sec = 5
 
 [detectors.item]
