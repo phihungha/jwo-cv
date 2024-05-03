@@ -3,7 +3,7 @@ repos:
     rev: v0.3.7
     hooks:
       - id: ruff
-        args: [--fix, --select I]
+        args: [--fix]
       - id: ruff-format
   - repo: https://github.com/python-poetry/poetry
     rev: "1.8.2"

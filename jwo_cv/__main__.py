@@ -10,8 +10,8 @@ import torch
 from ultralytics.utils import plotting
 
 from jwo_cv import info
-from jwo_cv import action_classifier as ac
-from jwo_cv import detectors
+from jwo_cv import action_detector as ad
+from jwo_cv import item_detector as id
 from jwo_cv.utils import AppException, Size
 
 APP_CONFIG_PATH = "jwo_cv/config/config.toml"
@@ -26,7 +26,7 @@ logger = logging.getLogger("jwo-cv")
 class ShoppingEvent:
     """Describes a shopping action with type (pick or return) and item names."""
 
-    type: ac.ActionType
+    type: ad.ActionType
     item_names: list[str]
 
     def __str__(self) -> str:
@@ -69,8 +69,8 @@ def getVideoSource(source_idx: int, image_size: Size) -> cv2.VideoCapture:
 
 def showDebugInfo(
     image: MatLike,
-    hands: Sequence[detectors.Detection],
-    items: Sequence[detectors.Detection],
+    hands: Sequence[id.Detection],
+    items: Sequence[id.Detection],
 ) -> None:
     """Annotate and show image on debug window.
 
@@ -105,8 +105,8 @@ def showDebugInfo(
 
 def processVideo(
     source: cv2.VideoCapture,
-    action_classifier: ac.ActionClassifier,
-    item_detector: detectors.ItemDetector,
+    action_detector: ad.ActionClassifier,
+    item_detector: id.ItemDetector,
     use_debug_video: bool,
 ) -> Iterator[ShoppingEvent]:
     """Process video and yield detected shopping events.
@@ -129,7 +129,7 @@ def processVideo(
         if not received:
             raise AppException("Failed to receive frame!")
 
-        action = action_classifier.detect(image)
+        action = action_detector.detect(image)
 
         if use_debug_video or action:
             items, hands = item_detector.detect(image)
@@ -161,10 +161,10 @@ def main():
     device = getDevice()
     logger.info("Use %s", device)
 
-    action_classifier = ac.ActionClassifier.from_config(
+    action_classifier = ad.ActionClassifier.from_config(
         detectors_config["action"], device
     )
-    item_detector = detectors.ItemDetector.from_config(detectors_config)
+    item_detector = id.ItemDetector.from_config(detectors_config)
 
     use_debug_video: bool = general_config["debug_video"]
 
