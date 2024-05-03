@@ -3,7 +3,7 @@ on:
   pull_request:
     branches: ["main", "dev"]
   push:
-    branches: ["main"]
+    branches: ["main", "dev"]
 
 jobs:
   ci:
@@ -15,7 +15,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Setup Python with .python-version
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
       - name: Setup Poetry ${{ matrix.poetry-version }}
         uses: abatilo/actions-poetry@v2
         with:
@@ -24,7 +24,7 @@ jobs:
         run: |
           poetry config virtualenvs.create true --local
           poetry config virtualenvs.in-project true --local
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         name: Setup dependency cache
         with:
           path: ./.venv
