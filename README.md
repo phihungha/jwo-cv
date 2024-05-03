@@ -26,3 +26,5 @@ Detect shopping actions and product items from real-time video then stream them 
 
 1. Run `poetry shell` in repository folder to enter virtual environment
 2. Run `python -m jwo_cv`
+
+Note: Set `debug_video` to false in `jwo_cv/config/config.toml` to disable video display
