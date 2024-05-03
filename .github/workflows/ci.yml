@@ -2,6 +2,8 @@ name: CI
 on:
   pull_request:
     branches: ["main"]
+  push:
+    branches: ["main"]
 
 jobs:
   ci:
@@ -18,12 +20,12 @@ jobs:
         uses: abatilo/actions-poetry@v2
         with:
           poetry-version: ${{ matrix.poetry-version }}
-      - name: Configure poetry to use local virtual environment
+      - name: Configure Poetry to use local virtual environment
         run: |
           poetry config virtualenvs.create true --local
           poetry config virtualenvs.in-project true --local
       - uses: actions/cache@v3
-        name: Define dependency cache
+        name: Setup dependency cache
         with:
           path: ./.venv
           key: venv-${{ hashFiles('poetry.lock') }}
