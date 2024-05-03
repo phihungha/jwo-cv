@@ -10,9 +10,13 @@ from numpy import typing as np_types
 Config = Mapping[str, Any]
 
 
+class AppException(Exception):
+    """Application-specific exception."""
+
+
 @dataclass(frozen=True)
 class Size:
-    """Describes the (width, height) size pf something."""
+    """Describes the (width, height) size of something."""
 
     width: int
     height: int

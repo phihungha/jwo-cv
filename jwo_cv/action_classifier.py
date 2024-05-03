@@ -10,23 +10,17 @@ from torchvision.transforms import v2 as transforms
 from cv2.typing import MatLike
 import movinets
 
-from jwo_cv import utils
+from jwo_cv.utils import Config
 
-# https://github.com/Atze00/MoViNet-pytorch
+
+# Model config reference: https://github.com/Atze00/MoViNet-pytorch
 MODEL_CONFIG = movinets.config._C.MODEL.MoViNetA2
 IMAGE_SIZE = (224, 224)
+
 PICK_CLASS_ID = 581
 RETURN_CLASS_ID = 582
 
 logger = logging.getLogger(__name__)
-
-device = (
-    "cuda"
-    if torch.cuda.is_available()
-    else "mps"
-    if torch.backends.mps.is_available()
-    else "cpu"
-)
 
 
 class ActionType(Enum):
@@ -36,24 +30,39 @@ class ActionType(Enum):
 
 @dataclass(frozen=True)
 class Action:
-    """Describes an action with type and confidence."""
+    """Describes an action detection with class ID, type and confidence."""
 
+    class_id: int
     type: ActionType
     confidence: float
 
+    def __str__(self) -> str:
+        return f"{{class_id: {self.class_id}, type: {self.type}, confidence: {self.confidence}}}"
+
 
 class ActionClassifier:
-    def __init__(
-        self,
-        min_confidence: float,
-        stream_buffer_duration_sec: int,
-    ) -> None:
-        self.min_confidence = min_confidence
-        self.stream_buffer_duration_sec = stream_buffer_duration_sec
+    """Detects and classifies actions in video using Movinet."""
 
-        self.model = movinets.MoViNet(MODEL_CONFIG, causal=True, pretrained=True)
-        self.model = self.model.to(device)
-        self.model.eval()
+    def __init__(
+        self, min_confidence: float, buffer_duration: int, device: str
+    ) -> None:
+        """Detects and classifies actions in video using Movinet.
+
+        Args:
+            min_confidence (float): Minimum detection confidence
+            buffer_duration (int): Seconds of video frames to buffer for detection
+            device (str): Device to run model on
+        """
+
+        self.min_confidence = min_confidence
+        self.buffer_duration = buffer_duration
+        self.device = device
+
+        self.model = (
+            movinets.MoViNet(MODEL_CONFIG, causal=True, pretrained=True)
+            .to(device)
+            .eval()
+        )
 
         self.image_transforms = transforms.Compose(
             [
@@ -63,40 +72,53 @@ class ActionClassifier:
             ]
         )
 
-        self.last_prediction_time = time.time()
+        self.last_detection_time = time.time()
 
     @classmethod
-    def from_config(cls, config: utils.Config) -> ActionClassifier:
+    def from_config(cls, config: Config, device: str) -> ActionClassifier:
         return ActionClassifier(
-            config["min_confidence"], config["stream_buffer_duration_sec"]
+            config["min_confidence"], config["stream_buffer_duration"], device
         )
 
-    def predict(self, image: MatLike) -> Action | None:
+    def clean_buffer_if_exceeds_duration(self):
         current_time = time.time()
-        if current_time > self.last_prediction_time + self.stream_buffer_duration_sec:
-            self.last_prediction_time = current_time
+        if current_time > self.last_detection_time + self.buffer_duration:
+            self.last_detection_time = current_time
             self.model.clean_activation_buffers()
-            logger.debug("Reset buffer.")
+            logger.debug("Reset action stream buffer")
 
-        input: torch.Tensor = self.image_transforms(image).to(device)
-        # Add frame dimension
-        input = input.unsqueeze(1)
-        # Add batch dimension
-        input = input.unsqueeze(0)
+    def detect(self, image: MatLike) -> Action | None:
+        """Detect pick or return action in a video frame.
+
+        Args:
+            image (MatLike): Image
+
+        Returns:
+            Action | None: Action or None if no action is detected.
+        """
+
+        self.clean_buffer_if_exceeds_duration()
+
+        input: torch.Tensor = self.image_transforms(image).to(self.device)
+        # Add frame and batch dimension
+        input = input.unsqueeze(1).unsqueeze(0)
 
         output: torch.Tensor = self.model(input)[0]
-        probabilities = output.softmax(0)
+        action_probs = output.softmax(0)
 
-        pick_prob = probabilities[PICK_CLASS_ID].item()
-        return_prob = probabilities[RETURN_CLASS_ID].item()
+        pick_prob = action_probs[PICK_CLASS_ID].item()
+        return_prob = action_probs[RETURN_CLASS_ID].item()
 
         if pick_prob >= return_prob:
+            class_id = PICK_CLASS_ID
             action_type = ActionType.PICK
             confidence = pick_prob
         else:
+            class_id = RETURN_CLASS_ID
             action_type = ActionType.RETURN
             confidence = return_prob
 
         if confidence >= self.min_confidence:
-            return Action(action_type, confidence)
+            self.model.clean_activation_buffers()
+            return Action(class_id, action_type, confidence)
         return None
