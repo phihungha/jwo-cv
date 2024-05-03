@@ -1,13 +1,13 @@
 # Computer Vision component of JWO Shopping System
 
-Detect shopping actions and product items from real-time video for a Just-Walk-Out shopping system.
+Detect shopping actions and product items from real-time video then stream them via a real-time API.
 
 ## Technologies
 
 - YOLOv8 via Ultralytics
 - Movinet via PyTorch
 - OpenCV
-- Flask + WebSocket
+- Flask API + WebSocket
 
 ## Members
 
@@ -18,8 +18,9 @@ Detect shopping actions and product items from real-time video for a Just-Walk-O
 
 1. Install Poetry ([Link](https://python-poetry.org/docs/#installing-with-pipx))
 2. Install Pyenv ([Link](https://github.com/pyenv/pyenv?tab=readme-ov-file#getting-pyenv))
-3. Clone this repository
-4. Run `poetry install` in repository folder
+3. Run `pyenv install 3.11.9`
+4. Clone this repository
+5. Run `poetry install` in repository folder
 
 ## How to run
 

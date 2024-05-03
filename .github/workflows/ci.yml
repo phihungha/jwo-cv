@@ -1,0 +1,35 @@
+name: CI
+on:
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  ci:
+    strategy:
+      fail-fast: false
+      matrix:
+        poetry-version: ["1.8.2"]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python with .python-version
+        uses: actions/setup-python@v4
+      - name: Setup Poetry ${{ matrix.poetry-version }}
+        uses: abatilo/actions-poetry@v2
+        with:
+          poetry-version: ${{ matrix.poetry-version }}
+      - name: Configure poetry to use local virtual environment
+        run: |
+          poetry config virtualenvs.create true --local
+          poetry config virtualenvs.in-project true --local
+      - uses: actions/cache@v3
+        name: Define dependency cache
+        with:
+          path: ./.venv
+          key: venv-${{ hashFiles('poetry.lock') }}
+      - name: Install project
+        run: poetry install
+      - name: Lint
+        run: poetry run ruff check
+      - name: Check formatting
+        run: poetry run ruff format --check
