@@ -39,7 +39,7 @@ def main() -> None:
     else:
         logging.root.setLevel(logging.INFO)
 
-    video_config = config["video_sources"]
+    video_config = config["video_source"]
     image_size = Size.from_wh_arr(video_config["size"])
     video_source = vision.getVideoSource(video_config["source_idx"], image_size)
 

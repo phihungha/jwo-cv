@@ -2,7 +2,7 @@
 debug_log = false
 debug_video = true
 
-[video_sources]
+[video_source]
 source_idx = 0
 size = [640, 640]
 
