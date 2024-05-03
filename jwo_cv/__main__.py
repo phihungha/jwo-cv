@@ -33,7 +33,7 @@ class ShoppingEvent:
         return f"{{type: {self.type}, item_names: {self.item_names}}}"
 
 
-def getDevice():
+def getDevice() -> str:
     """Get device to run models on."""
 
     return (
@@ -76,8 +76,8 @@ def showDebugInfo(
 
     Args:
         image (MatLike): Image
-        hands (Sequence[detectors.Detection]): Detected hands
-        items (Sequence[detectors.Detection]): Detected items
+        hands (Sequence[id.Detection]): Detected hands
+        items (Sequence[id.Detection]): Detected items
     """
 
     annotator = plotting.Annotator(image)
@@ -144,7 +144,7 @@ def processVideo(
             yield ShoppingEvent(action.type, item_names)
 
 
-def main():
+def main() -> None:
     config = toml.load(APP_CONFIG_PATH)
     general_config = config["general"]
 
