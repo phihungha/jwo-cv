@@ -2,7 +2,10 @@
 name = "jwo-cv"
 version = "0.1.0"
 description = "Computer Vision component of Just-Walk-Out Shopping System"
-authors = ["Ha Phi Hung <haphihung55@gmail.com>"]
+authors = [
+    "Ha Phi Hung <haphihung55@gmail.com>",
+    "Le Quang Trung <LeTrung8522@gmail.com>",
+]
 readme = "README.md"
 package-mode = false
 
@@ -14,11 +17,14 @@ toml = "^0.10.2"
 ultralytics = "^8.2.2"
 torch = "^2.2.2"
 torchvision = "^0.17.2"
-movinet-pytorch = {git = "https://github.com/Atze00/MoViNet-pytorch.git"}
+movinet-pytorch = { git = "https://github.com/Atze00/MoViNet-pytorch.git" }
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.3.7"
 pre-commit = "^3.7.0"
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
 
 [build-system]
 requires = ["poetry-core"]
