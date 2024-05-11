@@ -15,20 +15,26 @@ from jwo_cv.utils import Size
 
 APP_CONFIG_PATH = "jwo_cv/config/config.toml"
 shopping_event_generator = []
-app = Flask(__name__) 
+app = Flask(__name__)
+
+
 def event_stream():
     data = []
     while True:
         time.sleep(0.005)
-        event = 'new_event'
+        event = "new_event"
         for event in shopping_event_generator:
             msg = {"type": event.type, "item_names": event.item_names}
             data.append(msg)
         data = json.dumps(data)
         yield f"event:{event}\ndata:{data}\n\n"
+
+
 @app.route("/")
 def stream():
-    return Response(event_stream(), mimetype="text/event-stream")  
+    return Response(event_stream(), mimetype="text/event-stream")
+
+
 torch.set_grad_enabled(False)
 
 logging.basicConfig()
@@ -86,6 +92,6 @@ def main() -> None:
         cv2.destroyWindow("Debug")
     video_source.release()
 
-if __name__ == "__main__": 
+
+if __name__ == "__main__":
     main()
-    
