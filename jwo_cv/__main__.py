@@ -20,11 +20,14 @@ APP_CONFIG_PATH = "jwo_cv/config/config.toml"
 shopping_event_generator = {}
 app = Flask(__name__) 
 def event_stream():
+    data = []
     while True:
         time.sleep(0.005)
+        event = 'new_event'
         for event in shopping_event_generator:
             msg = {"type": event.type, "item_names": event.item_names}
-            data = json.dumps(msg)
+            data.append(msg)
+        data = json.dumps(data)
         yield f"event:{event}\ndata:{data}\n\n"
 @app.route("/")
 def stream():
