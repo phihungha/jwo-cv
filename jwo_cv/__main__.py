@@ -1,23 +1,20 @@
+import json
 import logging
 import logging.config
+import time
+
 import cv2
 import toml
 import torch
-from random import randint
+from flask import Flask, Response
 
 from jwo_cv import action_detector as ad
 from jwo_cv import item_detector as id
 from jwo_cv import vision
 from jwo_cv.utils import Size
 
-from flask import Flask, Response
-
-import time
-import json
-
-
 APP_CONFIG_PATH = "jwo_cv/config/config.toml"
-shopping_event_generator = {}
+shopping_event_generator = []
 app = Flask(__name__) 
 def event_stream():
     data = []
