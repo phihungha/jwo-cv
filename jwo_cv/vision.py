@@ -113,12 +113,12 @@ def processVideo(
 
         if use_debug_video or action:
             items, hands = item_detector.detect(image)
-            item_names = list(map(lambda i: i.class_name, items))
 
         if use_debug_video:
             showDebugInfo(image, hands, items)
             if cv2.waitKey(1) == ord("q"):
                 return
 
-        if action:
+        if action and items:
+            item_names = list(map(lambda i: i.class_name, items))
             yield ShoppingEvent(action.type, item_names)
