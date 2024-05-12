@@ -8,7 +8,7 @@ from ultralytics import YOLO
 from jwo_cv.utils import BoundingBox, Config
 
 ITEM_DETECTOR_MODEL_PATH = "jwo_cv/config/item_yolov8n.pt"
-HAND_DETECTOR_MODEL_PATH = "jwo_cv/config/item_yolov8n.pt"
+HAND_DETECTOR_MODEL_PATH = "jwo_cv/config/hand_yolov8n.pt"
 # TODO: Remove once the models are re-configured with no person class
 PERSON_CLASS_ID = 0
 
@@ -81,16 +81,11 @@ class HandDetector(Detector):
 
     @classmethod
     def from_config(cls, config: Config) -> HandDetector:
-        model = YOLO(ITEM_DETECTOR_MODEL_PATH)
+        model = YOLO(HAND_DETECTOR_MODEL_PATH)
         return cls(
             model,
             config["min_confidence"],
         )
-
-    def detect(self, image: MatLike) -> list[Detection]:
-        detections = super().detect(image)
-        # TODO: Remove once the models are re-configured with no person class
-        return list(filter(lambda d: d.class_id == PERSON_CLASS_ID, detections))
 
 
 class ItemDetector(Detector):
