@@ -16,4 +16,4 @@ min_confidence = 0.3
 max_hand_distance = 150
 
 [detectors.hand]
-min_confidence = 0.3
+min_confidence = 0.1
