@@ -1,14 +1,21 @@
+import json
 import logging
 import logging.config
+import time
+from typing import Iterator
 
 import cv2
 import toml
 import torch
+from flask import Flask, Response
 
 from jwo_cv import action_detector as ad
 from jwo_cv import item_detector as id
 from jwo_cv import vision
 from jwo_cv.utils import Size
+
+if __name__ != "__main__":
+    exit(0)
 
 APP_CONFIG_PATH = "jwo_cv/config/config.toml"
 
@@ -30,45 +37,61 @@ def getDevice() -> str:
     )
 
 
-def main() -> None:
-    config = toml.load(APP_CONFIG_PATH)
-    general_config = config["general"]
+config = toml.load(APP_CONFIG_PATH)
+general_config = config["general"]
 
-    if general_config["debug_log"]:
-        logging.root.setLevel(logging.DEBUG)
-    else:
-        logging.root.setLevel(logging.INFO)
+if general_config["debug_log"]:
+    logging.root.setLevel(logging.DEBUG)
+else:
+    logging.root.setLevel(logging.INFO)
 
-    video_config = config["video_source"]
-    image_size = Size.from_wh_arr(video_config["size"])
-    video_source = vision.getVideoSource(video_config["source_idx"], image_size)
 
-    detectors_config = config["detectors"]
-    device = getDevice()
-    logger.info("Use %s", device)
+video_config = config["video_source"]
+image_size = Size.from_wh_arr(video_config["size"])
+video_source = vision.getVideoSource(video_config["source_idx"], image_size)
 
-    action_classifier = ad.ActionClassifier.from_config(
-        detectors_config["action"], device
-    )
-    item_detector = id.ItemDetector.from_config(detectors_config)
+detectors_config = config["detectors"]
+device = getDevice()
+logger.info("Use %s", device)
 
-    use_debug_video: bool = general_config["debug_video"]
+action_classifier = ad.ActionClassifier.from_config(detectors_config["action"], device)
+item_detector = id.ItemDetector.from_config(detectors_config)
 
-    if use_debug_video:
-        cv2.namedWindow("Debug")
+use_debug_video: bool = general_config["debug_video"]
 
-    # NOTE: Find a way to pass this generator into the API function.
-    shopping_event_generator = vision.processVideo(
-        video_source, action_classifier, item_detector, use_debug_video
-    )
-    # NOTE: Do this in the API function.
+if use_debug_video:
+    cv2.namedWindow("Debug")
+
+shopping_event_generator = vision.processVideo(
+    video_source, action_classifier, item_detector, use_debug_video
+)
+
+app = Flask(__name__)
+
+
+def event_stream() -> Iterator[str]:
+    for event in shopping_event_generator:
+        logger.info(event)
+        msg = {
+            "time": time.time(),
+            "type": str(event.type),
+            "item_names": event.item_names,
+        }
+        yield json.dumps(msg)
+
+
+@app.route("/")
+def stream():
+    return Response(event_stream(), mimetype="text/event-stream")
+
+
+if general_config["api"]:
+    app.run()
+else:
     for event in shopping_event_generator:
         logger.info(event)
 
-    if use_debug_video:
-        cv2.destroyWindow("Debug")
-    video_source.release()
 
-
-if __name__ == "__main__":
-    main()
+if use_debug_video:
+    cv2.destroyWindow("Debug")
+video_source.release()
