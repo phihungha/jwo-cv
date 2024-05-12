@@ -1,7 +1,7 @@
 [general]
-api = true
+api = false
 debug_log = false
-debug_video = false
+debug_video = true
 
 [video_source]
 source_idx = 0
@@ -13,8 +13,8 @@ min_confidence = 0.7
 stream_buffer_duration = 5
 
 [detectors.item]
-min_confidence = 0.3
+min_confidence = 0.5
 max_hand_distance = 150
 
 [detectors.hand]
-min_confidence = 0.3
+min_confidence = 0.5
