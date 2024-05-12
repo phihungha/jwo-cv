@@ -1,6 +1,7 @@
 [general]
+api = true
 debug_log = false
-debug_video = true
+debug_video = false
 
 [video_source]
 source_idx = 0
@@ -16,4 +17,4 @@ min_confidence = 0.3
 max_hand_distance = 150
 
 [detectors.hand]
-min_confidence = 0.1
+min_confidence = 0.3
