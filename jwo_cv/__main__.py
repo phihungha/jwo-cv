@@ -73,7 +73,7 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 
 @app.route("/")
 @socketio.on("connect_video")
-def event_stream():
+def event_stream(msg):
     for event in shopping_event_generator:
         logger.info(event)
         msg = {
