@@ -73,7 +73,7 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 
 @app.route("/")
 @socketio.on("connect_video")
-def event_stream(msg):
+def event_stream():
     for event in shopping_event_generator:
         logger.info(event)
         msg = {
@@ -81,12 +81,11 @@ def event_stream(msg):
             "type": str(event.type),
             "item_names": event.item_names,
         }
-        emit("Video", json.dumps(msg), broadcast=True)
-        socketio.sleep(1)
+        socketio.emit("Video", json.dumps(msg))
 
 
 if general_config["api"]:
-    socketio.run(app)
+    socketio.run(app, use_reloader=False, log_output=True)
 else:
     for event in shopping_event_generator:
         logger.info(event)
