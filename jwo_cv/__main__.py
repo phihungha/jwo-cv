@@ -7,7 +7,7 @@ import cv2
 import toml
 import torch
 from flask import Flask
-from flask_socketio import SocketIO, emit
+from flask_socketio import SocketIO
 
 from jwo_cv import action_detector as ad
 from jwo_cv import item_detector as id
