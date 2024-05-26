@@ -86,7 +86,7 @@ def event_stream(msg):
 
 
 if general_config["api"]:
-    socketio.run(app)
+    socketio.run(app, use_reloader=False, log_output=True)
 else:
     for event in shopping_event_generator:
         logger.info(event)
