@@ -48,7 +48,12 @@ else:
 
 video_config = config["video_source"]
 image_size = Size.from_wh_arr(video_config["size"])
-video_source = vision.getVideoSource(video_config["source_idx"], image_size)
+if video_config["source_video_path"] is not None:
+    video_source = vision.getFileVideoSource(
+        video_config["source_video_path"], image_size
+    )
+else:
+    video_source = vision.getCameraVideoSource(video_config["source_idx"], image_size)
 
 detectors_config = config["detectors"]
 device = getDevice()
