@@ -62,6 +62,9 @@ class Detector:
         detections: list[Detection] = []
 
         for output in outputs:
+            if output.boxes is None:
+                continue
+
             for result in output.boxes:
                 confidence = float(result.conf)
                 if confidence < self.min_confidence:
