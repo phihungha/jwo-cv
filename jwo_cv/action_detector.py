@@ -3,7 +3,6 @@ from __future__ import annotations
 import logging
 import time
 from dataclasses import dataclass
-from datetime import datetime
 from enum import Enum
 
 import movinets
@@ -129,11 +128,8 @@ class ActionClassifier:
 
         if confidence >= self.min_confidence:
             self.model.clean_activation_buffers()
-            logger.info(
-                "%s: Action %s detected with confidence %f",
-                datetime.now(),
-                action_type,
-                confidence,
+            logger.debug(
+                "Action %s detected with confidence %f", action_type, confidence
             )
             return Action(class_id, action_type, confidence)
         return None
