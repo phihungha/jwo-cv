@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import Any, Mapping, Sequence
 
 import numpy as np
+import torch
 from numpy import typing as np_types
 
 Config = Mapping[str, Any]
@@ -25,8 +26,8 @@ class Size:
         return f"({self.width}, {self.height})"
 
     @classmethod
-    def from_wh_arr(cls, arr: np_types.NDArray | Sequence[int]) -> Size:
-        return Size(arr[0], arr[1])
+    def from_wh_arr(cls, arr: np_types.NDArray | torch.Tensor | Sequence[int]) -> Size:
+        return Size(int(arr[0]), int(arr[1]))
 
     def to_wh_arr(self) -> np_types.NDArray:
         return np.array([self.width, self.height])
@@ -71,7 +72,9 @@ class BoundingBox:
         )
 
     @classmethod
-    def from_xyxy_arr(cls, array: np_types.NDArray | Sequence[int]) -> BoundingBox:
+    def from_xyxy_arr(
+        cls, array: np_types.NDArray | torch.Tensor | Sequence[int]
+    ) -> BoundingBox:
         return cls(
             Position(int(array[0]), int(array[1])),
             Position(int(array[2]), int(array[3])),

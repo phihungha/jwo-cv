@@ -15,10 +15,11 @@ from jwo_cv.utils import Config
 
 # Model config reference: https://github.com/Atze00/MoViNet-pytorch
 MODEL_CONFIG = movinets.config._C.MODEL.MoViNetA2
+MODEL_WEIGHT_PATH = "jwo_cv/config/action_movineta2.pth"
 IMAGE_SIZE = (224, 224)
 
-PICK_CLASS_ID = 581
-RETURN_CLASS_ID = 582
+PICK_CLASS_ID = 0
+RETURN_CLASS_ID = 1
 
 logger = logging.getLogger(__name__)
 
@@ -47,11 +48,16 @@ class ActionClassifier:
     """Detects and classifies actions in video using Movinet."""
 
     def __init__(
-        self, min_confidence: float, buffer_duration: int, device: str
+        self,
+        model: movinets.MoViNet,
+        min_confidence: float,
+        buffer_duration: int,
+        device: str,
     ) -> None:
         """Detects and classifies actions in video using Movinet.
 
         Args:
+            model (movinets.MoViNet): Model
             min_confidence (float): Minimum detection confidence
             buffer_duration (int): Seconds of video frames to buffer for detection
             device (str): Device to run model on
@@ -61,11 +67,7 @@ class ActionClassifier:
         self.buffer_duration = buffer_duration
         self.device = device
 
-        self.model = (
-            movinets.MoViNet(MODEL_CONFIG, causal=True, pretrained=True)
-            .to(device)
-            .eval()
-        )
+        self.model = model.to(self.device).eval()
 
         self.image_transforms = transforms.Compose(
             [
@@ -79,8 +81,11 @@ class ActionClassifier:
 
     @classmethod
     def from_config(cls, config: Config, device: str) -> ActionClassifier:
+        model = movinets.MoViNet(MODEL_CONFIG, causal=True, pretrained=True)
+        model_weights = torch.load(MODEL_WEIGHT_PATH)
+        model.load_state_dict(model_weights)
         return ActionClassifier(
-            config["min_confidence"], config["stream_buffer_duration"], device
+            model, config["min_confidence"], config["stream_buffer_duration"], device
         )
 
     def clean_buffer_if_exceeds_duration(self):
@@ -123,5 +128,8 @@ class ActionClassifier:
 
         if confidence >= self.min_confidence:
             self.model.clean_activation_buffers()
+            logger.debug(
+                "Action %s detected with confidence %f", action_type, confidence
+            )
             return Action(class_id, action_type, confidence)
         return None

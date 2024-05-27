@@ -1,20 +1,21 @@
 [general]
-api = false
+api = true
 debug_log = false
-debug_video = true
+debug_video = false
 
 [video_source]
 source_idx = 0
+source_video_path = "video.mp4"
 size = [640, 640]
 
 [detectors]
 [detectors.action]
-min_confidence = 0.7
-stream_buffer_duration = 5
+min_confidence = 0.4
+stream_buffer_duration = 8
 
 [detectors.item]
 min_confidence = 0.5
 max_hand_distance = 150
 
 [detectors.hand]
-min_confidence = 0.5
+min_confidence = 0.7

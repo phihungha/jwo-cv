@@ -25,8 +25,8 @@ class ShoppingEvent:
         return f"{{type: {self.type}, item_names: {self.item_names}}}"
 
 
-def getVideoSource(source_idx: int, image_size: Size) -> cv2.VideoCapture:
-    """Get a video source from a source index.
+def getCameraVideoSource(source_idx: int, image_size: Size) -> cv2.VideoCapture:
+    """Get a video source from a camera source index.
 
     Args:
         source_idx (int): Source index
@@ -42,6 +42,28 @@ def getVideoSource(source_idx: int, image_size: Size) -> cv2.VideoCapture:
 
     if not video_source.isOpened():
         logger.error("Cannot open camera")
+        exit()
+
+    return video_source
+
+
+def getFileVideoSource(source_path: str, image_size: Size) -> cv2.VideoCapture:
+    """Get a video source from a video file.
+
+    Args:
+        source_path (str): Source video file path
+        image_size (Size): Image size
+
+    Returns:
+        cv2.VideoCapture: Video source
+    """
+
+    video_source = cv2.VideoCapture(source_path)
+    video_source.set(cv2.CAP_PROP_FRAME_HEIGHT, image_size.height)
+    video_source.set(cv2.CAP_PROP_FRAME_WIDTH, image_size.width)
+
+    if not video_source.isOpened():
+        logger.error("Cannot open video file")
         exit()
 
     return video_source

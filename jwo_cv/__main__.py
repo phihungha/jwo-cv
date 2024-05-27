@@ -2,12 +2,12 @@ import json
 import logging
 import logging.config
 import time
-from typing import Iterator
 
 import cv2
 import toml
 import torch
-from flask import Flask, Response
+from flask import Flask
+from flask_socketio import SocketIO
 
 from jwo_cv import action_detector as ad
 from jwo_cv import item_detector as id
@@ -48,7 +48,12 @@ else:
 
 video_config = config["video_source"]
 image_size = Size.from_wh_arr(video_config["size"])
-video_source = vision.getVideoSource(video_config["source_idx"], image_size)
+if video_config["source_video_path"] is not None:
+    video_source = vision.getFileVideoSource(
+        video_config["source_video_path"], image_size
+    )
+else:
+    video_source = vision.getCameraVideoSource(video_config["source_idx"], image_size)
 
 detectors_config = config["detectors"]
 device = getDevice()
@@ -67,9 +72,12 @@ shopping_event_generator = vision.processVideo(
 )
 
 app = Flask(__name__)
+app.config["SECRET_KEY"] = "secret!"
+socketio = SocketIO(app, cors_allowed_origins="*")
 
 
-def event_stream() -> Iterator[str]:
+@socketio.on("connect_video")
+def event_stream():
     for event in shopping_event_generator:
         logger.info(event)
         msg = {
@@ -77,16 +85,11 @@ def event_stream() -> Iterator[str]:
             "type": str(event.type),
             "item_names": event.item_names,
         }
-        yield json.dumps(msg)
-
-
-@app.route("/")
-def stream():
-    return Response(event_stream(), mimetype="text/event-stream")
+        socketio.emit("Video", json.dumps(msg))
 
 
 if general_config["api"]:
-    app.run()
+    socketio.run(app, use_reloader=False, log_output=True)
 else:
     for event in shopping_event_generator:
         logger.info(event)
