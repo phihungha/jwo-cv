@@ -6,3 +6,6 @@
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
+
+# Video files
+*.mp4
