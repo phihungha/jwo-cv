@@ -76,7 +76,6 @@ app.config["SECRET_KEY"] = "secret!"
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 
-@app.route("/")
 @socketio.on("connect_video")
 def event_stream():
     for event in shopping_event_generator:
