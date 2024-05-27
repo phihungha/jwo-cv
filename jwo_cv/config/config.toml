@@ -1,7 +1,7 @@
 [general]
-api = false
+api = true
 debug_log = false
-debug_video = true
+debug_video = false
 
 [video_source]
 source_idx = 0
