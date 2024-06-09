@@ -10,7 +10,7 @@ from ultralytics.utils import plotting
 from jwo_cv import action_detector as ad
 from jwo_cv import info
 from jwo_cv import item_detector as id
-from jwo_cv.utils import AppException, Size
+from jwo_cv.utils import AppException, Config, Size
 
 logger = logging.getLogger(__name__)
 
@@ -66,6 +66,26 @@ def getFileVideoSource(source_path: str, image_size: Size) -> cv2.VideoCapture:
     if not video_source.isOpened():
         logger.error("Cannot open video file")
         exit()
+
+    return video_source
+
+
+def getVideoSource(config: Config):
+    """Get video source from config.
+
+    Args:
+        config (Config): Video config
+
+    Returns:
+        VideoCapture: Video capture source
+    """
+
+    image_size = Size.from_wh_arr(config["size"])
+
+    if "source_video_path" in config:
+        video_source = getFileVideoSource(config["source_video_path"], image_size)
+    else:
+        video_source = getCameraVideoSource(config["source_idx"], image_size)
 
     return video_source
 
@@ -144,4 +164,6 @@ def processVideo(
 
         if action and items:
             item_counts = Counter(map(lambda i: i.class_name, items))
-            yield ShoppingEvent(action.type, item_counts)
+            event = ShoppingEvent(action.type, item_counts)
+            logger.info(event)
+            yield event

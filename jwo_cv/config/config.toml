@@ -1,11 +1,13 @@
 [general]
-api = true
 debug_log = false
-debug_video = false
+debug_video = true
+
+[emit_events]
+emit = true
+server_url = "http://localhost:5000/cart"
 
 [video_source]
 source_idx = 0
-source_video_path = "video.mp4"
 size = [640, 640]
 
 [detectors]

@@ -6,9 +6,8 @@ import toml
 import torch
 
 from jwo_cv import action_detector as ad
+from jwo_cv import api, vision
 from jwo_cv import item_detector as id
-from jwo_cv import vision
-from jwo_cv.utils import Size
 
 if __name__ != "__main__":
     exit(0)
@@ -42,14 +41,7 @@ else:
     logging.root.setLevel(logging.INFO)
 
 
-video_config = config["video_source"]
-image_size = Size.from_wh_arr(video_config["size"])
-if video_config["source_video_path"] is not None:
-    video_source = vision.getFileVideoSource(
-        video_config["source_video_path"], image_size
-    )
-else:
-    video_source = vision.getCameraVideoSource(video_config["source_idx"], image_size)
+video_source = vision.getVideoSource(config["video_source"])
 
 detectors_config = config["detectors"]
 device = getDevice()
@@ -67,8 +59,13 @@ shopping_event_generator = vision.processVideo(
     video_source, action_classifier, item_detector, use_debug_video
 )
 
-for event in shopping_event_generator:
-    logger.info(event)
+emit_events_config = config["emit_events"]
+if emit_events_config["emit"]:
+    server_url = emit_events_config["server_url"]
+    api.start_emitting_events(server_url, shopping_event_generator)
+else:
+    for event in shopping_event_generator:
+        pass
 
 if use_debug_video:
     cv2.destroyWindow("Debug")
