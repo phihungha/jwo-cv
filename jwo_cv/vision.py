@@ -1,4 +1,5 @@
 import logging
+from collections import Counter
 from dataclasses import dataclass
 from typing import Iterator, Sequence
 
@@ -16,13 +17,13 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class ShoppingEvent:
-    """Describes a shopping action with type (pick or return) and item names."""
+    """Describes a shopping action with type (pick or return), item names and counts."""
 
     type: ad.ActionType
-    item_names: list[str]
+    item_counts: dict[str, int]
 
     def __str__(self) -> str:
-        return f"{{type: {self.type}, item_names: {self.item_names}}}"
+        return f"{{type: {self.type}, item_counts: {self.item_counts}}}"
 
 
 def getCameraVideoSource(source_idx: int, image_size: Size) -> cv2.VideoCapture:
@@ -142,5 +143,5 @@ def processVideo(
                 return
 
         if action and items:
-            item_names = list(map(lambda i: i.class_name, items))
-            yield ShoppingEvent(action.type, item_names)
+            item_counts = Counter(map(lambda i: i.class_name, items))
+            yield ShoppingEvent(action.type, item_counts)
