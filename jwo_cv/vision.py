@@ -26,7 +26,7 @@ class ShoppingEvent:
         return f"{{type: {self.type}, item_counts: {self.item_counts}}}"
 
 
-def getCameraVideoSource(source_idx: int, image_size: Size) -> cv2.VideoCapture:
+def getIndexVideoSource(source_idx: int, image_size: Size) -> cv2.VideoCapture:
     """Get a video source from a camera source index.
 
     Args:
@@ -82,10 +82,10 @@ def getVideoSource(config: Config):
 
     image_size = Size.from_wh_arr(config["size"])
 
-    if "source_video_path" in config:
-        video_source = getFileVideoSource(config["source_video_path"], image_size)
+    if "source_file_path" in config:
+        video_source = getFileVideoSource(config["source_file_path"], image_size)
     else:
-        video_source = getCameraVideoSource(config["source_idx"], image_size)
+        video_source = getIndexVideoSource(config["source_idx"], image_size)
 
     return video_source
 

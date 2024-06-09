@@ -1,5 +1,6 @@
 import logging
 import logging.config
+import os
 
 import cv2
 import toml
@@ -12,12 +13,19 @@ from jwo_cv import item_detector as id
 if __name__ != "__main__":
     exit(0)
 
-APP_CONFIG_PATH = "jwo_cv/config/config.toml"
-
 torch.set_grad_enabled(False)
 
 logging.basicConfig()
 logger = logging.getLogger("jwo-cv")
+
+app_config_path = os.getenv("JWO_CV_CONFIG_PATH") or "jwo_cv/config/config.toml"
+config = toml.load(app_config_path)
+general_config = config["general"]
+
+if general_config["debug_log"]:
+    logging.root.setLevel(logging.DEBUG)
+else:
+    logging.root.setLevel(logging.INFO)
 
 
 def getDevice() -> str:
@@ -32,26 +40,16 @@ def getDevice() -> str:
     )
 
 
-config = toml.load(APP_CONFIG_PATH)
-general_config = config["general"]
-
-if general_config["debug_log"]:
-    logging.root.setLevel(logging.DEBUG)
-else:
-    logging.root.setLevel(logging.INFO)
-
-
-video_source = vision.getVideoSource(config["video_source"])
-
-detectors_config = config["detectors"]
 device = getDevice()
 logger.info("Use %s", device)
 
+detectors_config = config["detectors"]
 action_classifier = ad.ActionClassifier.from_config(detectors_config["action"], device)
 item_detector = id.ItemDetector.from_config(detectors_config)
 
-use_debug_video: bool = general_config["debug_video"]
+video_source = vision.getVideoSource(config["video_source"])
 
+use_debug_video: bool = general_config["debug_video"]
 if use_debug_video:
     cv2.namedWindow("Debug")
 
@@ -67,6 +65,6 @@ else:
     for event in shopping_event_generator:
         pass
 
+video_source.release()
 if use_debug_video:
     cv2.destroyWindow("Debug")
-video_source.release()
