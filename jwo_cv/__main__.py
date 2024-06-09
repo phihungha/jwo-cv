@@ -1,13 +1,9 @@
-import json
 import logging
 import logging.config
-import time
 
 import cv2
 import toml
 import torch
-from flask import Flask
-from flask_socketio import SocketIO
 
 from jwo_cv import action_detector as ad
 from jwo_cv import item_detector as id
@@ -71,29 +67,8 @@ shopping_event_generator = vision.processVideo(
     video_source, action_classifier, item_detector, use_debug_video
 )
 
-app = Flask(__name__)
-app.config["SECRET_KEY"] = "secret!"
-socketio = SocketIO(app, cors_allowed_origins="*")
-
-
-@socketio.on("connect_video")
-def event_stream():
-    for event in shopping_event_generator:
-        logger.info(event)
-        msg = {
-            "time": time.time(),
-            "type": str(event.type),
-            "item_names": event.item_names,
-        }
-        socketio.emit("Video", json.dumps(msg))
-
-
-if general_config["api"]:
-    socketio.run(app, use_reloader=False, log_output=True)
-else:
-    for event in shopping_event_generator:
-        logger.info(event)
-
+for event in shopping_event_generator:
+    logger.info(event)
 
 if use_debug_video:
     cv2.destroyWindow("Debug")

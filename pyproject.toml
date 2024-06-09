@@ -12,13 +12,11 @@ package-mode = false
 [tool.poetry.dependencies]
 python = "~3.11"
 opencv-python = "^4.9.0.80"
-Flask = "^3.0.3"
 toml = "^0.10.2"
 ultralytics = "^8.2.2"
 torch = "^2.2.2"
 torchvision = "^0.17.2"
 movinet-pytorch = { git = "https://github.com/Atze00/MoViNet-pytorch.git" }
-flask-socketio = "^5.3.6"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.3.7"
