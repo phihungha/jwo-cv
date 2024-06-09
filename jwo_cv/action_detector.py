@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-import time
 from dataclasses import dataclass
 from enum import Enum
 
@@ -51,7 +50,8 @@ class ActionClassifier:
         self,
         model: movinets.MoViNet,
         min_confidence: float,
-        buffer_duration: int,
+        max_buffer_frame_count: int,
+        min_detection_frame_span: int,
         device: str,
     ) -> None:
         """Detects and classifies actions in video using Movinet.
@@ -59,12 +59,14 @@ class ActionClassifier:
         Args:
             model (movinets.MoViNet): Model
             min_confidence (float): Minimum detection confidence
-            buffer_duration (int): Seconds of video frames to buffer for detection
+            max_buffer_frame_count (int): Num of video frames to buffer for detection
+            max_detection_frame_span (int): Min num of frames between detection
             device (str): Device to run model on
         """
 
         self.min_confidence = min_confidence
-        self.buffer_duration = buffer_duration
+        self.max_buffer_frame_count = max_buffer_frame_count
+        self.min_detection_frame_span = min_detection_frame_span
         self.device = device
 
         self.model = model.to(self.device).eval()
@@ -77,23 +79,30 @@ class ActionClassifier:
             ]
         )
 
-        self.last_detection_time = time.time()
+        self.buffer_frame_count = 0
+        self.frame_count_since_last_detection = 0
 
     @classmethod
     def from_config(cls, config: Config, device: str) -> ActionClassifier:
         model = movinets.MoViNet(MODEL_CONFIG, causal=True, pretrained=True)
+
         model_weights = torch.load(MODEL_WEIGHT_PATH)
         model.load_state_dict(model_weights)
+
         return ActionClassifier(
-            model, config["min_confidence"], config["stream_buffer_duration"], device
+            model,
+            config["min_confidence"],
+            config["max_buffer_frame_count"],
+            config["min_detection_frame_span"],
+            device,
         )
 
     def clean_buffer_if_exceeds_duration(self):
-        current_time = time.time()
-        if current_time > self.last_detection_time + self.buffer_duration:
-            self.last_detection_time = current_time
+        self.buffer_frame_count += 1
+
+        if self.buffer_frame_count > self.max_buffer_frame_count:
+            self.buffer_frame_count = 0
             self.model.clean_activation_buffers()
-            logger.debug("Reset action stream buffer")
 
     def detect(self, image: MatLike) -> Action | None:
         """Detect pick or return action in a video frame.
@@ -106,6 +115,7 @@ class ActionClassifier:
         """
 
         self.clean_buffer_if_exceeds_duration()
+        self.frame_count_since_last_detection += 1
 
         input: torch.Tensor = self.image_transforms(image).to(self.device)
         # Add frame and batch dimension
@@ -126,7 +136,11 @@ class ActionClassifier:
             action_type = ActionType.RETURN
             confidence = return_prob
 
-        if confidence >= self.min_confidence:
+        if (
+            confidence >= self.min_confidence
+            and self.frame_count_since_last_detection >= self.min_detection_frame_span
+        ):
+            self.frame_count_since_last_detection = 0
             self.model.clean_activation_buffers()
             logger.debug(
                 "Action %s detected with confidence %f", action_type, confidence

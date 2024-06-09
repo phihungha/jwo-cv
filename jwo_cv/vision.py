@@ -20,7 +20,7 @@ class ShoppingEvent:
     """Describes a shopping action with type (pick or return), item names and counts."""
 
     type: ad.ActionType
-    item_counts: dict[str, int]
+    item_counts: dict[int, int]
 
     def __str__(self) -> str:
         return f"{{type: {self.type}, item_counts: {self.item_counts}}}"
@@ -163,7 +163,7 @@ def processVideo(
                 return
 
         if action and items:
-            item_counts = Counter(map(lambda i: i.class_name, items))
+            item_counts = dict(Counter(map(lambda i: i.class_id, items)))
             event = ShoppingEvent(action.type, item_counts)
             logger.info(event)
             yield event
