@@ -18,7 +18,7 @@ torch.set_grad_enabled(False)
 logging.basicConfig()
 logger = logging.getLogger("jwo-cv")
 
-app_config_path = os.getenv("JWO_CV_CONFIG_PATH") or "jwo_cv/config/config.toml"
+app_config_path = os.getenv("JWO_CV_CONFIG_PATH") or "jwo_cv/config/config.dev.toml"
 config = toml.load(app_config_path)
 general_config = config["general"]
 
