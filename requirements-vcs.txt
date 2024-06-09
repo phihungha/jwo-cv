@@ -1,0 +1,1 @@
+movinet-pytorch @ git+https://github.com/Atze00/MoViNet-pytorch.git@c2d1edf48fc6c5259707f9d833f22171b4f63493 ; python_version >= "3.11" and python_version < "3.12"
