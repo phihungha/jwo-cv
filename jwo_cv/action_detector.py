@@ -14,7 +14,6 @@ from jwo_cv.utils import Config
 
 # Model config reference: https://github.com/Atze00/MoViNet-pytorch
 MODEL_CONFIG = movinets.config._C.MODEL.MoViNetA2
-MODEL_WEIGHT_PATH = "jwo_cv/config/action_movineta2.pth"
 IMAGE_SIZE = (224, 224)
 
 PICK_CLASS_ID = 0
@@ -86,7 +85,7 @@ class ActionClassifier:
     def from_config(cls, config: Config, device: str) -> ActionClassifier:
         model = movinets.MoViNet(MODEL_CONFIG, causal=True, pretrained=True)
 
-        model_weights = torch.load(MODEL_WEIGHT_PATH)
+        model_weights = torch.load(config["model_path"])
         model.load_state_dict(model_weights)
 
         return ActionClassifier(
