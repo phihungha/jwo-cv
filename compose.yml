@@ -1,6 +1,16 @@
 services:
-  api-server:
-    build:
-      context: .
+  jwo-cv-service:
+    container_name: jwo-cv-service
+    image: haphihung55/jwo-cv-service
+    build: .
     ports:
       - 5000:5000
+      - 5001:5001
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [ gpu ]
+    command: python -m jwo_cv
