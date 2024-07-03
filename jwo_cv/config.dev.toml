@@ -1,11 +1,11 @@
 [general]
-debug_log = false
+debug_log = true
 
 [video_client_api]
 port = 6000
 
 [shop_event]
-emit = true
+emit = false
 url = "http://localhost:5000"
 namespace = "cart"
 

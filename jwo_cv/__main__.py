@@ -62,9 +62,9 @@ def main():
     general_config = app_config["general"]
 
     if general_config["debug_log"]:
-        logging.root.setLevel(logging.DEBUG)
+        logging.basicConfig(level=logging.DEBUG)
     else:
-        logging.root.setLevel(logging.INFO)
+        logging.basicConfig(level=logging.INFO)
 
     device = get_device()
     logger.info("Use %s to run vision ML models.", device)
