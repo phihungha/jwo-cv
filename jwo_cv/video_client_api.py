@@ -103,7 +103,7 @@ class VideoVisionTrack(aiortc.MediaStreamTrack):
 
         Args:
             input_track (aiortc.MediaStreamTrack): Receiving video track
-            frame_conn (mpc.Connection): Video frame pipe connection to
+            frame_conn (mpc.Connection): Video frame (numpy.NDArray) pipe connection to
             analysis worker process
             use_debug_video (bool, optional): Return debug video stream.
             Defaults to False.

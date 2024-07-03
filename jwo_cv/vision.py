@@ -90,7 +90,7 @@ def analyze_video(
     config: Config,
     device: str,
     frame_conn: mpc.Connection,
-    shop_event_queue: mp.Queue[shop_event.ShopEvent],
+    shop_event_queue: mp.Queue,
     use_debug_video: bool,
 ):
     """Analyze video for shopping events.
@@ -98,8 +98,9 @@ def analyze_video(
     Args:
         config (Config): App config
         device (str): Device to run vision ML models on
-        frame_conn (mpc.Connection): Video frame pipe connection to main process
-        shop_event_queue (mp.Queue[shop_event.ShopEvent]): Shopping event queue
+        frame_conn (mpc.Connection): Video frame (numpy.NDArray) pipe connection
+        to main process
+        shop_event_queue (mp.Queue): Shopping event shop_event.ShopEvent queue
         use_debug_video (bool): Create debug video
     """
 
