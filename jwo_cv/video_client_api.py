@@ -26,7 +26,8 @@ async def offer(req: web.Request):
     req_body = await req.json()
     if "sdp" not in req_body or "type" not in req_body:
         raise web.HTTPBadRequest(text="Invalid video connection offer.")
-    debug_video: bool = req_body.get("debug_video", False)
+
+    use_debug_video: bool = req_body.get("use_debug_video", False)
 
     offer = aiortc.RTCSessionDescription(sdp=req_body["sdp"], type=req_body["type"])
 
@@ -59,8 +60,8 @@ async def offer(req: web.Request):
     def on_track(track: aiortc.MediaStreamTrack):
         if track.kind != "video":
             return
-        vision_track = VideoVisionTrack.from_track(track, req.app, debug_video)
-        if debug_video:
+        vision_track = VideoVisionTrack.from_track(track, req.app, use_debug_video)
+        if use_debug_video:
             peer_conn.addTrack(vision_track)
         else:
             media_blackhole.addTrack(vision_track)
@@ -95,7 +96,7 @@ class VideoVisionTrack(aiortc.MediaStreamTrack):
     def __init__(
         self,
         input_track: aiortc.MediaStreamTrack,
-        frame_conn: mpc.Connection,
+        frame_conn: mpc.PipeConnection,
         use_debug_video: bool = False,
     ):
         """A video stream track which performs computer vision work on video
@@ -103,8 +104,8 @@ class VideoVisionTrack(aiortc.MediaStreamTrack):
 
         Args:
             input_track (aiortc.MediaStreamTrack): Receiving video track
-            frame_conn (mpc.Connection): Video frame (numpy.NDArray) pipe connection to
-            analysis worker process
+            frame_conn (mpc.PipeConnection): Video frame (numpy.NDArray) pipe connection
+           to analysis worker process
             use_debug_video (bool, optional): Return debug video stream.
             Defaults to False.
         """

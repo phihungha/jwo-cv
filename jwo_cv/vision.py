@@ -91,7 +91,7 @@ def annotate_debug_info(
 def analyze_video(
     config: Config,
     device: str,
-    frame_conn: mpc.Connection,
+    frame_conn: mpc.PipeConnection,
     shop_event_queue: mp.Queue[shop_event.ShopEvent],
     use_debug_video: bool,
 ):
@@ -100,7 +100,7 @@ def analyze_video(
     Args:
         config (Config): App config
         device (str): Device to run vision ML models on
-        frame_conn (mpc.Connection): Video frame (numpy.NDArray) pipe connection
+        frame_conn (mpc.PipeConnection): Video frame (numpy.NDArray) pipe connection
         to main process
         shop_event_queue (mp.Queue[shop_event.ShopEvent]): Shopping event queue
         use_debug_video (bool): Create debug video

@@ -19,7 +19,7 @@ ultralytics = "^8.2.48"
 movinet-pytorch = { git = "https://github.com/Atze00/MoViNet-pytorch.git" }
 python-socketio = { extras = ["asyncio_client"], version = "^5.11.2" }
 aiortc = "^1.9.0"
-aiohttp = "^3.9.5"
+aiohttp = { version = "^3.9.5", extras = ["speedups"] }
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.5.0"
