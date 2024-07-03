@@ -97,7 +97,7 @@ class VideoVisionTrack(aiortc.MediaStreamTrack):
     def __init__(
         self,
         input_track: aiortc.MediaStreamTrack,
-        frame_conn: mpc.PipeConnection,
+        frame_conn: mpc.Connection,
         use_debug_video: bool = False,
     ):
         """A video stream track which performs computer vision work on video
@@ -105,7 +105,7 @@ class VideoVisionTrack(aiortc.MediaStreamTrack):
 
         Args:
             input_track (aiortc.MediaStreamTrack): Receiving video track
-            frame_conn (mpc.PipeConnection): Video frame (numpy.NDArray) pipe connection
+            frame_conn (mpc.Connection): Video frame (numpy.NDArray) pipe connection
            to analysis worker process
             use_debug_video (bool, optional): Return debug video stream.
             Defaults to False.
