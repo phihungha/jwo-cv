@@ -1,0 +1,29 @@
+{
+    "cSpell.words": [
+        "aiohttp",
+        "aiortc",
+        "argmax",
+        "clearml",
+        "connectionstatechange",
+        "denorm",
+        "denormalize",
+        "devcontainers",
+        "Dtype",
+        "imshow",
+        "Movinet",
+        "movineta",
+        "movinets",
+        "ndarray",
+        "probs",
+        "Pyenv",
+        "softmax",
+        "torchvision",
+        "unsqueeze",
+        "xyxy",
+        "xyxyn",
+        "YOLO",
+        "yolov"
+    ],
+    "python.analysis.typeCheckingMode": "basic",
+    "python.analysis.autoImportCompletions": true
+}
