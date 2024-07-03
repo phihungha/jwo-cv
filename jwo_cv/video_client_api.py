@@ -60,6 +60,7 @@ async def offer(req: web.Request):
     def on_track(track: aiortc.MediaStreamTrack):
         if track.kind != "video":
             return
+
         vision_track = VideoVisionTrack.from_track(track, req.app, use_debug_video)
         if use_debug_video:
             peer_conn.addTrack(vision_track)
