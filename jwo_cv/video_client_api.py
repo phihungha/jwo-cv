@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import asyncio
 import logging
 import multiprocessing as mp
@@ -50,7 +52,7 @@ class VideoVisionTrack(aiortc.MediaStreamTrack):
     @classmethod
     def from_track(
         cls, track: aiortc.MediaStreamTrack, app: web.Application, use_debug_video: bool
-    ):
+    ) -> VideoVisionTrack:
         """Create VideoAnalyzeTrack from a video track and start
         corresponding vision worker process.
 
