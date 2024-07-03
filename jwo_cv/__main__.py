@@ -9,8 +9,7 @@ import toml
 import torch
 from aiohttp import web
 
-from jwo_cv import info, video_client_api
-from jwo_cv import shopping_event as se
+from jwo_cv import app_keys, shop_event, video_client_api
 
 logger = logging.getLogger("jwo-cv")
 
@@ -28,26 +27,33 @@ def getDevice() -> str:
 
 
 async def setup_and_cleanup(app: web.Application):
-    emit_events_config = app[info.config_key]["shopping_events"]
-    emit = emit_events_config["emit"]
-    if emit:
-        url = emit_events_config["url"]
-        namespace = emit_events_config["namespace"]
-        shopping_event_queue = app[info.shopping_event_queue_key]
-        app[info.shopping_event_emitter_key] = asyncio.create_task(
-            se.emit_shopping_events(url, namespace, shopping_event_queue)
+    shop_event_config = app[app_keys.config]["shop_event"]
+    if shop_event_config["emit"]:
+        url = shop_event_config["url"]
+        namespace = shop_event_config["namespace"]
+        shop_event_queue = app[app_keys.shop_event_queue]
+
+        app[app_keys.shop_event_emit_task] = asyncio.create_task(
+            shop_event.begin_emit_shop_events(url, namespace, shop_event_queue)
         )
 
     yield
 
-    app[info.video_process_executor_key].shutdown()
+    logger.info("Shutting down...")
 
-    video_peer_conns = app[info.video_peer_conns_key]
-    await asyncio.gather(conn.close() for conn in video_peer_conns)
+    app[app_keys.vision_process_executor].shutdown()
+    logger.debug("Shut down vision worker processes.")
+
+    video_peer_conns = app[app_keys.video_client_conns]
+    await asyncio.gather(conn.close() for conn in video_peer_conns.values())
     video_peer_conns.clear()
+    logger.debug("Closed all video client connections.")
 
-    app[info.shopping_event_emitter_key].cancel()
-    await app[info.shopping_event_emitter_key]
+    if shop_event_config["emit"]:
+        shop_event_emit_task = app[app_keys.shop_event_emit_task]
+        shop_event_emit_task.cancel()
+        await shop_event_emit_task
+        logger.debug("Stopped emitting shopping events.")
 
 
 def main():
@@ -61,21 +67,23 @@ def main():
         logging.root.setLevel(logging.INFO)
 
     device = getDevice()
-    logger.info("Use %s", device)
+    logger.info("Use %s to run vision ML models.", device)
 
     app = web.Application()
-    app[info.config_key] = app_config
-    app[info.device_key] = device
-    app[info.shopping_event_queue_key] = mp.Queue()
-    app[info.video_peer_conns_key] = set()
-    app[info.video_process_executor_key] = futures.ProcessPoolExecutor(
+
+    app[app_keys.config] = app_config
+    app[app_keys.device] = device
+    app[app_keys.shop_event_queue] = mp.Queue()
+    app[app_keys.video_client_conns] = dict()
+    app[app_keys.vision_process_executor] = futures.ProcessPoolExecutor(
         mp_context=mp.get_context("forkserver")
     )
-    app.add_routes(video_client_api.routes)
     app.cleanup_ctx.append(setup_and_cleanup)
 
+    app.add_routes(video_client_api.routes)
+
     port = app_config["video_client_api"]["port"]
-    logger.info(f"Begin listening to video client connection offer on {port}")
+    logger.info(f"Begin listening for video client connection offer on {port}.")
     web.run_app(app, port=port)
 
 
