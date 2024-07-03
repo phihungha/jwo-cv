@@ -1,96 +1,26 @@
+from __future__ import annotations
+
 import logging
+import multiprocessing as mp
 from collections import Counter
-from dataclasses import dataclass
-from typing import Iterator, Sequence
+from typing import Sequence
 
 import cv2
+import torch
 from cv2.typing import MatLike
+from numpy import typing as np_types
 from ultralytics.utils import plotting
 
 from jwo_cv import action_detector as ad
 from jwo_cv import info
 from jwo_cv import item_detector as id
-from jwo_cv.utils import AppException, Config, Size
+from jwo_cv import shopping_event as se
+from jwo_cv.utils import Config
 
 logger = logging.getLogger(__name__)
 
 
-@dataclass
-class ShoppingEvent:
-    """Describes a shopping action with type (pick or return), item names and counts."""
-
-    type: ad.ActionType
-    item_counts: dict[int, int]
-
-    def __str__(self) -> str:
-        return f"{{type: {self.type}, item_counts: {self.item_counts}}}"
-
-
-def getIndexVideoSource(source_idx: int, image_size: Size) -> cv2.VideoCapture:
-    """Get a video source from a camera source index.
-
-    Args:
-        source_idx (int): Source index
-        image_size (Size): Image size
-
-    Returns:
-        cv2.VideoCapture: Video source
-    """
-
-    video_source = cv2.VideoCapture(source_idx)
-    video_source.set(cv2.CAP_PROP_FRAME_HEIGHT, image_size.height)
-    video_source.set(cv2.CAP_PROP_FRAME_WIDTH, image_size.width)
-
-    if not video_source.isOpened():
-        logger.error("Cannot open camera")
-        exit()
-
-    return video_source
-
-
-def getFileVideoSource(source_path: str, image_size: Size) -> cv2.VideoCapture:
-    """Get a video source from a video file.
-
-    Args:
-        source_path (str): Source video file path
-        image_size (Size): Image size
-
-    Returns:
-        cv2.VideoCapture: Video source
-    """
-
-    video_source = cv2.VideoCapture(source_path)
-    video_source.set(cv2.CAP_PROP_FRAME_HEIGHT, image_size.height)
-    video_source.set(cv2.CAP_PROP_FRAME_WIDTH, image_size.width)
-
-    if not video_source.isOpened():
-        logger.error("Cannot open video file")
-        exit()
-
-    return video_source
-
-
-def getVideoSource(config: Config):
-    """Get video source from config.
-
-    Args:
-        config (Config): Video config
-
-    Returns:
-        VideoCapture: Video capture source
-    """
-
-    image_size = Size.from_wh_arr(config["size"])
-
-    if "source_file_path" in config:
-        video_source = getFileVideoSource(config["source_file_path"], image_size)
-    else:
-        video_source = getIndexVideoSource(config["source_idx"], image_size)
-
-    return video_source
-
-
-def showDebugInfo(
+def show_debug_info(
     image: MatLike,
     hands: Sequence[id.Detection],
     items: Sequence[id.Detection],
@@ -126,31 +56,28 @@ def showDebugInfo(
     cv2.imshow("Debug", annotator.result())
 
 
-def processVideo(
-    source: cv2.VideoCapture,
-    action_detector: ad.ActionClassifier,
-    item_detector: id.ItemDetector,
-    use_debug_video: bool,
-) -> Iterator[ShoppingEvent]:
-    """Process video and yield detected shopping events.
+def process_video(
+    client_id: str | None,
+    config: Config,
+    device: str,
+    video_frame_queue: mp.Queue[np_types.NDArray],
+    shopping_event_queue: mp.Queue[se.ShoppingEvent],
+):
+    torch.set_grad_enabled(False)
 
-    Args:
-        source (cv2.VideoCapture): Video source
-        action_classifier (ac.ActionClassifier): Action detector
-        item_detector (detectors.ItemDetector): Item detector
-        use_debug_video (bool): Debug with video
+    detectors_config = config["detectors"]
+    action_detector = ad.ActionClassifier.from_config(
+        detectors_config["action"], device
+    )
+    item_detector = id.ItemDetector.from_config(detectors_config)
 
-    Raises:
-        AppException: Failed to receive frame
-
-    Yields:
-        ShoppingEvent: Shopping event
-    """
+    use_debug_video: bool = config["general"]["debug_video"]
+    window_name = f"Video from client {client_id}"
+    if use_debug_video:
+        cv2.namedWindow(window_name)
 
     while True:
-        received, image = source.read()
-        if not received:
-            raise AppException("Failed to receive frame!")
+        image = video_frame_queue.get()
 
         action = action_detector.detect(image)
 
@@ -158,12 +85,15 @@ def processVideo(
             items, hands = item_detector.detect(image)
 
         if use_debug_video:
-            showDebugInfo(image, hands, items)
+            show_debug_info(image, hands, items)
             if cv2.waitKey(1) == ord("q"):
-                return
+                break
 
         if action and items:
             item_counts = dict(Counter(map(lambda i: i.class_id, items)))
-            event = ShoppingEvent(action.type, item_counts)
+            event = se.ShoppingEvent(action.type, item_counts)
             logger.info(event)
-            yield event
+            shopping_event_queue.put(event)
+
+    if use_debug_video:
+        cv2.destroyWindow(window_name)

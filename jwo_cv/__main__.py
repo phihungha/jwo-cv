@@ -1,31 +1,18 @@
+import asyncio
 import logging
 import logging.config
+import multiprocessing as mp
 import os
+from concurrent import futures
 
-import cv2
 import toml
 import torch
+from aiohttp import web
 
-from jwo_cv import action_detector as ad
-from jwo_cv import api, vision
-from jwo_cv import item_detector as id
+from jwo_cv import info, video_client_api
+from jwo_cv import shopping_event as se
 
-if __name__ != "__main__":
-    exit(0)
-
-torch.set_grad_enabled(False)
-
-logging.basicConfig()
 logger = logging.getLogger("jwo-cv")
-
-app_config_path = os.getenv("JWO_CV_CONFIG_PATH") or "jwo_cv/config/config.dev.toml"
-config = toml.load(app_config_path)
-general_config = config["general"]
-
-if general_config["debug_log"]:
-    logging.root.setLevel(logging.DEBUG)
-else:
-    logging.root.setLevel(logging.INFO)
 
 
 def getDevice() -> str:
@@ -40,31 +27,57 @@ def getDevice() -> str:
     )
 
 
-device = getDevice()
-logger.info("Use %s", device)
+async def setup_and_cleanup(app: web.Application):
+    emit_events_config = app[info.config_key]["shopping_events"]
+    emit = emit_events_config["emit"]
+    if emit:
+        url = emit_events_config["url"]
+        namespace = emit_events_config["namespace"]
+        shopping_event_queue = app[info.shopping_event_queue_key]
+        app[info.shopping_event_emitter_key] = asyncio.create_task(
+            se.emit_shopping_events(url, namespace, shopping_event_queue)
+        )
 
-detectors_config = config["detectors"]
-action_classifier = ad.ActionClassifier.from_config(detectors_config["action"], device)
-item_detector = id.ItemDetector.from_config(detectors_config)
+    yield
 
-video_source = vision.getVideoSource(config["video_source"])
+    app[info.video_process_executor_key].shutdown()
 
-use_debug_video: bool = general_config["debug_video"]
-if use_debug_video:
-    cv2.namedWindow("Debug")
+    video_peer_conns = app[info.video_peer_conns_key]
+    await asyncio.gather(conn.close() for conn in video_peer_conns)
+    video_peer_conns.clear()
 
-shopping_event_generator = vision.processVideo(
-    video_source, action_classifier, item_detector, use_debug_video
-)
+    app[info.shopping_event_emitter_key].cancel()
+    await app[info.shopping_event_emitter_key]
 
-emit_events_config = config["emit_events"]
-if emit_events_config["emit"]:
-    server_url = emit_events_config["server_url"]
-    api.start_emitting_events(server_url, shopping_event_generator)
-else:
-    for event in shopping_event_generator:
-        pass
 
-video_source.release()
-if use_debug_video:
-    cv2.destroyWindow("Debug")
+def main():
+    app_config_path = os.getenv("JWO_CV_CONFIG_PATH") or "jwo_cv/config/config.dev.toml"
+    app_config = toml.load(app_config_path)
+    general_config = app_config["general"]
+
+    if general_config["debug_log"]:
+        logging.root.setLevel(logging.DEBUG)
+    else:
+        logging.root.setLevel(logging.INFO)
+
+    device = getDevice()
+    logger.info("Use %s", device)
+
+    app = web.Application()
+    app[info.config_key] = app_config
+    app[info.device_key] = device
+    app[info.shopping_event_queue_key] = mp.Queue()
+    app[info.video_peer_conns_key] = set()
+    app[info.video_process_executor_key] = futures.ProcessPoolExecutor(
+        mp_context=mp.get_context("forkserver")
+    )
+    app.add_routes(video_client_api.routes)
+    app.cleanup_ctx.append(setup_and_cleanup)
+
+    port = app_config["video_client_api"]["port"]
+    logger.info(f"Begin listening to video client connection offer on {port}")
+    web.run_app(app, port=port)
+
+
+if __name__ == "__main__":
+    main()

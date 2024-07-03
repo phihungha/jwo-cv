@@ -2,14 +2,13 @@
 debug_log = false
 debug_video = true
 
-[emit_events]
+[shopping_events]
 emit = true
-server_url = "http://localhost:5000/cart"
+url = "http://localhost:5000"
+namespace = "cart"
 
-[video_source]
-source_idx = 0
-# source_file_path = "/mnt/media/Dev/jwo-cv-data/merl-shopping-dataset-original/Videos/1_1_crop.mp4"
-size = [640, 640]
+[video_client_api]
+port = 5001
 
 [detectors]
 [detectors.action]
