@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import logging
 import multiprocessing as mp
 from collections import Counter
@@ -74,7 +72,7 @@ def analyze_video(
 
     Args:
         config (Config): App config
-        device (str): Device to run ML models on
+        device (str): Device to run vision ML models on
         frame_conn (mpc.Connection): Video frame pipe connection to main process
         shop_event_queue (mp.Queue[shop_event.ShopEvent]): Shopping event queue
         use_debug_video (bool): Create debug video

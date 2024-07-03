@@ -110,6 +110,8 @@ async def offer(req: web.Request):
     peer_conn = aiortc.RTCPeerConnection()
     peer_conn_id = uuid.uuid4()
 
+    peer_conns = req.app[app_keys.video_client_conns]
+
     @peer_conn.on("connectionstatechange")
     async def on_conn_state_change():
         logger.info(
@@ -123,7 +125,10 @@ async def offer(req: web.Request):
             del peer_conns[peer_conn_id]
 
         if peer_conn.connectionState == "closed":
-            del peer_conns[peer_conn_id]
+            try:
+                del peer_conns[peer_conn_id]
+            except KeyError:
+                pass
 
     media_blackhole = media.MediaBlackhole()
 
@@ -131,11 +136,11 @@ async def offer(req: web.Request):
     def on_track(track: aiortc.MediaStreamTrack):
         if track.kind != "video":
             return
-        debug_video_track = VideoVisionTrack.from_track(track, req.app, debug_video)
+        vision_track = VideoVisionTrack.from_track(track, req.app, debug_video)
         if debug_video:
-            peer_conn.addTrack(debug_video_track)
+            peer_conn.addTrack(vision_track)
         else:
-            media_blackhole.addTrack(debug_video_track)
+            media_blackhole.addTrack(vision_track)
 
     await peer_conn.setRemoteDescription(offer)
     await media_blackhole.start()
@@ -147,7 +152,6 @@ async def offer(req: web.Request):
         )
     await peer_conn.setLocalDescription(answer)
 
-    peer_conns = req.app[app_keys.video_peer_conns]
     peer_conns[peer_conn_id] = peer_conn
 
     resp_body = {
