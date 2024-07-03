@@ -15,8 +15,74 @@ from jwo_cv import app_keys, vision
 from jwo_cv.utils import AppException
 
 logger = logging.Logger(__name__)
-
 media_relay = media.MediaRelay()
+routes = web.RouteTableDef()
+
+
+@routes.post("/offer")
+async def offer(req: web.Request):
+    """Receive offer to establish WebRTC peer connection for video streaming."""
+
+    req_body = await req.json()
+    if "sdp" not in req_body or "type" not in req_body:
+        raise web.HTTPBadRequest(text="Invalid video connection offer.")
+    debug_video: bool = req_body.get("debug_video", False)
+
+    offer = aiortc.RTCSessionDescription(sdp=req_body["sdp"], type=req_body["type"])
+
+    peer_conn = aiortc.RTCPeerConnection()
+    peer_conn_id = uuid.uuid4()
+
+    peer_conns = req.app[app_keys.video_client_conns]
+
+    @peer_conn.on("connectionstatechange")
+    async def on_conn_state_change():
+        logger.info(
+            "Video client %s connection state is %s",
+            peer_conn_id,
+            peer_conn.connectionState,
+        )
+
+        if peer_conn.connectionState == "failed":
+            await peer_conn.close()
+            del peer_conns[peer_conn_id]
+
+        if peer_conn.connectionState == "closed":
+            try:
+                del peer_conns[peer_conn_id]
+            except KeyError:
+                pass
+
+    media_blackhole = media.MediaBlackhole()
+
+    @peer_conn.on("track")
+    def on_track(track: aiortc.MediaStreamTrack):
+        if track.kind != "video":
+            return
+        vision_track = VideoVisionTrack.from_track(track, req.app, debug_video)
+        if debug_video:
+            peer_conn.addTrack(vision_track)
+        else:
+            media_blackhole.addTrack(vision_track)
+
+    await peer_conn.setRemoteDescription(offer)
+    await media_blackhole.start()
+
+    answer = await peer_conn.createAnswer()
+    if answer is None:
+        raise AppException(
+            "Failed to create answer to video client's connection offer."
+        )
+    await peer_conn.setLocalDescription(answer)
+
+    peer_conns[peer_conn_id] = peer_conn
+
+    resp_body = {
+        "id": peer_conn_id,
+        "sdp": peer_conn.localDescription.sdp,
+        "type": peer_conn.localDescription.type,
+    }
+    return web.json_response(resp_body)
 
 
 class VideoVisionTrack(aiortc.MediaStreamTrack):
@@ -93,72 +159,3 @@ class VideoVisionTrack(aiortc.MediaStreamTrack):
             return_video_frame = np.zeros_like(video_frame)
 
         return return_video_frame
-
-
-routes = web.RouteTableDef()
-
-
-@routes.post("/offer")
-async def offer(req: web.Request):
-    """Receive offer to establish WebRTC peer connection for video streaming."""
-
-    req_body = await req.json()
-    if "sdp" not in req_body or "type" not in req_body:
-        raise web.HTTPBadRequest(text="Invalid video connection offer.")
-    debug_video: bool = req_body.get("debug_video", False)
-
-    offer = aiortc.RTCSessionDescription(sdp=req_body["sdp"], type=req_body["type"])
-
-    peer_conn = aiortc.RTCPeerConnection()
-    peer_conn_id = uuid.uuid4()
-
-    peer_conns = req.app[app_keys.video_client_conns]
-
-    @peer_conn.on("connectionstatechange")
-    async def on_conn_state_change():
-        logger.info(
-            "Video client %s connection state is %s",
-            peer_conn_id,
-            peer_conn.connectionState,
-        )
-
-        if peer_conn.connectionState == "failed":
-            await peer_conn.close()
-            del peer_conns[peer_conn_id]
-
-        if peer_conn.connectionState == "closed":
-            try:
-                del peer_conns[peer_conn_id]
-            except KeyError:
-                pass
-
-    media_blackhole = media.MediaBlackhole()
-
-    @peer_conn.on("track")
-    def on_track(track: aiortc.MediaStreamTrack):
-        if track.kind != "video":
-            return
-        vision_track = VideoVisionTrack.from_track(track, req.app, debug_video)
-        if debug_video:
-            peer_conn.addTrack(vision_track)
-        else:
-            media_blackhole.addTrack(vision_track)
-
-    await peer_conn.setRemoteDescription(offer)
-    await media_blackhole.start()
-
-    answer = await peer_conn.createAnswer()
-    if answer is None:
-        raise AppException(
-            "Failed to create answer to video client's connection offer."
-        )
-    await peer_conn.setLocalDescription(answer)
-
-    peer_conns[peer_conn_id] = peer_conn
-
-    resp_body = {
-        "id": peer_conn_id,
-        "sdp": peer_conn.localDescription.sdp,
-        "type": peer_conn.localDescription.type,
-    }
-    return web.json_response(resp_body)

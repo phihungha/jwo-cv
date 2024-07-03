@@ -14,8 +14,8 @@ from jwo_cv import app_keys, shop_event, video_client_api
 logger = logging.getLogger("jwo-cv")
 
 
-def getDevice() -> str:
-    """Get device to run models on."""
+def get_device() -> str:
+    """Get device to run vision ML models on."""
 
     return (
         "cuda"
@@ -66,7 +66,7 @@ def main():
     else:
         logging.root.setLevel(logging.INFO)
 
-    device = getDevice()
+    device = get_device()
     logger.info("Use %s to run vision ML models.", device)
 
     app = web.Application()
@@ -79,12 +79,11 @@ def main():
         mp_context=mp.get_context("forkserver")
     )
     app.cleanup_ctx.append(setup_and_cleanup)
-
     app.add_routes(video_client_api.routes)
 
-    port = app_config["video_client_api"]["port"]
-    logger.info(f"Begin listening for video client connection offer on {port}.")
-    web.run_app(app, port=port)
+    api_port = app_config["video_client_api"]["port"]
+    logger.info(f"Begin listening for video client connection offer on {api_port}.")
+    web.run_app(app, port=api_port)
 
 
 if __name__ == "__main__":
