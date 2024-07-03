@@ -1,13 +1,13 @@
 [general]
 debug_log = false
 
+[video_client_api]
+port = 6000
+
 [shop_event]
 emit = true
 url = "http://localhost:5000"
 namespace = "cart"
-
-[video_client_api]
-port = 6000
 
 [analyzers]
 [analyzers.action]
