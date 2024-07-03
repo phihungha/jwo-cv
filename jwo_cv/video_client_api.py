@@ -1,14 +1,96 @@
+import asyncio
 import logging
 import multiprocessing as mp
+import uuid
+from multiprocessing import connection as mpc
 
 import aiortc
+import numpy as np
 from aiohttp import web
 from aiortc.contrib import media
 
-from jwo_cv import info, vision
+from jwo_cv import app_keys, vision
 from jwo_cv.utils import AppException
 
 logger = logging.Logger(__name__)
+
+media_relay = media.MediaRelay()
+
+
+class VideoVisionTrack(aiortc.MediaStreamTrack):
+    """A video stream track which performs computer vision work on video
+    and returns video with debug info.
+    """
+
+    kind = "video"
+
+    def __init__(
+        self,
+        input_track: aiortc.MediaStreamTrack,
+        frame_conn: mpc.Connection,
+        use_debug_video: bool = False,
+    ):
+        """A video stream track which performs computer vision work on video
+        and returns video with debug info.
+
+        Args:
+            input_track (aiortc.MediaStreamTrack): Receiving video track
+            frame_conn (mpc.Connection): Video frame pipe connection to
+            analysis worker process
+            use_debug_video (bool, optional): Return debug video stream.
+            Defaults to False.
+        """
+
+        super().__init__()
+
+        self.input_track = input_track
+        self.frame_conn = frame_conn
+        self.use_debug_video = use_debug_video
+
+    @classmethod
+    def from_track(
+        cls, track: aiortc.MediaStreamTrack, app: web.Application, use_debug_video: bool
+    ):
+        """Create VideoAnalyzeTrack from a video track and start
+        corresponding vision worker process.
+
+        Args:
+            track (aiortc.MediaStreamTrack): Input video track
+            app (web.Application): Application
+            use_debug_video (bool): Return debug video stream
+
+        Returns:
+            VideoAnalyzeTrack
+        """
+
+        frame_main_conn, frame_worker_conn = mp.Pipe()
+        shop_event_queue = app[app_keys.shop_event_queue]
+
+        process_executor = app[app_keys.vision_process_executor]
+        process_executor.submit(
+            vision.analyze_video,
+            app[app_keys.config],
+            app[app_keys.device],
+            frame_worker_conn,
+            shop_event_queue,
+            use_debug_video,
+        )
+
+        track = media_relay.subscribe(track)
+        return cls(track, frame_main_conn, use_debug_video)
+
+    async def recv(self):
+        video_frame = (await self.input_track.recv()).to_ndarray(format="bgr24")  # type: ignore
+
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(None, self.frame_conn.send, video_frame)
+
+        if self.use_debug_video:
+            return_video_frame = await loop.run_in_executor(None, self.frame_conn.recv)
+        else:
+            return_video_frame = np.zeros_like(video_frame)
+
+        return return_video_frame
 
 
 routes = web.RouteTableDef()
@@ -16,27 +98,47 @@ routes = web.RouteTableDef()
 
 @routes.post("/offer")
 async def offer(req: web.Request):
+    """Receive offer to establish WebRTC peer connection for video streaming."""
+
     req_body = await req.json()
+    if "sdp" not in req_body or "type" not in req_body:
+        raise web.HTTPBadRequest(text="Invalid video connection offer.")
+    debug_video: bool = req_body.get("debug_video", False)
+
     offer = aiortc.RTCSessionDescription(sdp=req_body["sdp"], type=req_body["type"])
 
     peer_conn = aiortc.RTCPeerConnection()
-    peer_conns = req.app[info.video_peer_conns_key]
-    peer_conns.add(peer_conn)
+    peer_conn_id = uuid.uuid4()
 
     @peer_conn.on("connectionstatechange")
     async def on_conn_state_change():
-        logger.info("Video client's connection state is ", peer_conn.connectionState)
+        logger.info(
+            "Video client %s connection state is %s",
+            peer_conn_id,
+            peer_conn.connectionState,
+        )
+
         if peer_conn.connectionState == "failed":
             await peer_conn.close()
-            peer_conns.discard(peer_conn)
+            del peer_conns[peer_conn_id]
+
+        if peer_conn.connectionState == "closed":
+            del peer_conns[peer_conn_id]
+
+    media_blackhole = media.MediaBlackhole()
 
     @peer_conn.on("track")
-    async def on_track(track: aiortc.MediaStreamTrack):
-        if track.kind == "video":
-            relay = media.MediaRelay()
-            await process_video_track(relay.subscribe(track), req)
+    def on_track(track: aiortc.MediaStreamTrack):
+        if track.kind != "video":
+            return
+        debug_video_track = VideoVisionTrack.from_track(track, req.app, debug_video)
+        if debug_video:
+            peer_conn.addTrack(debug_video_track)
+        else:
+            media_blackhole.addTrack(debug_video_track)
 
     await peer_conn.setRemoteDescription(offer)
+    await media_blackhole.start()
 
     answer = await peer_conn.createAnswer()
     if answer is None:
@@ -45,32 +147,12 @@ async def offer(req: web.Request):
         )
     await peer_conn.setLocalDescription(answer)
 
+    peer_conns = req.app[app_keys.video_peer_conns]
+    peer_conns[peer_conn_id] = peer_conn
+
     resp_body = {
+        "id": peer_conn_id,
         "sdp": peer_conn.localDescription.sdp,
         "type": peer_conn.localDescription.type,
     }
     return web.json_response(resp_body)
-
-
-async def process_video_track(track: aiortc.MediaStreamTrack, req: web.Request):
-    print("process")
-    video_frame = await track.recv()
-    app = req.app
-    client_id = req.remote
-    process_executor = app[info.video_process_executor_key]
-    shopping_event_queue = app[info.shopping_event_queue_key]
-    video_frame_queue = mp.Queue()
-
-    process_executor.submit(
-        vision.process_video,
-        client_id,
-        app[info.config_key],
-        app[info.device_key],
-        video_frame_queue,
-        shopping_event_queue,
-    )
-
-    while True:
-        decoded_video_frame = video_frame.to_ndarray(format="bgr24")  # type: ignore
-        video_frame_queue.put(decoded_video_frame)
-        video_frame = await track.recv()

@@ -1,7 +1,7 @@
 [general]
 debug_log = false
 
-[shopping_events]
+[shop_event]
 emit = true
 url = "http://localhost:5000"
 namespace = "cart"
