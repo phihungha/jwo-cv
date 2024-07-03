@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass(frozen=True)
 class Action:
-    """Describes an action detection with class ID, type and confidence."""
+    """Describes an action recognition with class ID, type and confidence."""
 
     class_id: int
     type: shop_event.ActionType
@@ -37,8 +37,8 @@ class Action:
         )
 
 
-class ActionClassifier:
-    """Detects and classifies actions in video using Movinet."""
+class ActionRecognizer:
+    """Recognizes action in video using Movinet."""
 
     def __init__(
         self,
@@ -47,7 +47,7 @@ class ActionClassifier:
         min_detection_frame_span: int,
         device: str,
     ) -> None:
-        """Detects and classifies actions in video using Movinet.
+        """Recognizes action in video using Movinet.
 
         Args:
             model (movinets.MoViNet): Model
@@ -57,7 +57,7 @@ class ActionClassifier:
         """
 
         self.min_confidence = min_confidence
-        self.min_detection_frame_span = min_detection_frame_span
+        self.min_action_frame_span = min_detection_frame_span
         self.device = device
 
         self.model = model.to(self.device).eval()
@@ -71,37 +71,37 @@ class ActionClassifier:
         )
 
         self.buffer_frame_count = 0
-        self.frame_count_since_last_detection = 0
+        self.frame_count_since_last_action = 0
 
     @classmethod
-    def from_config(cls, config: Config, device: str) -> ActionClassifier:
+    def from_config(cls, config: Config, device: str) -> ActionRecognizer:
         model = movinets.MoViNet(MODEL_CONFIG, causal=True, pretrained=True)
 
         model_weights = torch.load(config["model_path"])
         model.load_state_dict(model_weights)
 
-        return ActionClassifier(
+        return ActionRecognizer(
             model,
             config["min_confidence"],
-            config["min_detection_frame_span"],
+            config["min_action_frame_span"],
             device,
         )
 
-    def detect(self, image: MatLike) -> Action | None:
-        """Detect pick or return action in a video frame.
+    def recognize(self, image: MatLike) -> Action | None:
+        """Recognize pick or return action from a video frame.
 
         Args:
             image (MatLike): Image
 
         Returns:
-            Action | None: Action or None if no action is detected.
+            tuple[Action, float] | None: Action or None if no action is detected.
         """
 
-        self.frame_count_since_last_detection += 1
+        self.frame_count_since_last_action += 1
 
         input: torch.Tensor = self.image_transforms(image).to(self.device)
         # Add frame and batch dimension
-        input = input.unsqueeze(1).unsqueeze(0)
+        input = input[None, None]
 
         output: torch.Tensor = self.model(input)[0]
         action_probs = output.softmax(0)
@@ -120,12 +120,10 @@ class ActionClassifier:
 
         if (
             confidence >= self.min_confidence
-            and self.frame_count_since_last_detection >= self.min_detection_frame_span
+            and self.frame_count_since_last_action >= self.min_action_frame_span
         ):
-            self.frame_count_since_last_detection = 0
+            self.frame_count_since_last_action = 0
             self.model.clean_activation_buffers()
-            logger.debug(
-                "Action %s detected with confidence %f", action_type, confidence
-            )
             return Action(class_id, action_type, confidence)
+
         return None

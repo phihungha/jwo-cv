@@ -9,18 +9,17 @@ namespace = "cart"
 [video_client_api]
 port = 6000
 
-[detectors]
-[detectors.action]
+[analyzers]
+[analyzers.action]
 model_path = "jwo_cv/model/action_recognition_movinet_a2_stream.pth"
 min_confidence = 0.9
-max_buffer_frame_count = 100
-min_detection_frame_span = 20
+min_action_frame_span = 20
 
-[detectors.item]
+[analyzers.item]
 model_path = "jwo_cv/config/item_detection_yolov8s.pt"
 min_confidence = 0.9
 max_hand_distance = 150
 
-[detectors.hand]
+[analyzers.hand]
 model_path = "jwo_cv/config/hand_detection_yolov8s.pt"
 min_confidence = 0.6
