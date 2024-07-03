@@ -71,7 +71,7 @@ def process_video(
     )
     item_detector = id.ItemDetector.from_config(detectors_config)
 
-    use_debug_video: bool = config["general"]["debug_video"]
+    use_debug_video: bool = False
     window_name = f"Video from client {client_id}"
     if use_debug_video:
         cv2.namedWindow(window_name)

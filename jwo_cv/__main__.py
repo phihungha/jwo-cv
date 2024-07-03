@@ -51,7 +51,7 @@ async def setup_and_cleanup(app: web.Application):
 
 
 def main():
-    app_config_path = os.getenv("JWO_CV_CONFIG_PATH") or "jwo_cv/config/config.dev.toml"
+    app_config_path = os.getenv("JWO_CV_CONFIG_PATH") or "jwo_cv/config.dev.toml"
     app_config = toml.load(app_config_path)
     general_config = app_config["general"]
 
