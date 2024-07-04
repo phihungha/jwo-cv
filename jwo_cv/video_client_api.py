@@ -61,15 +61,15 @@ async def _start_video_conn(
     peer_conn = aiortc.RTCPeerConnection()
     peer_conn_id = uuid.uuid4()
 
-    loop = asyncio.get_event_loop()
+    event_loop = asyncio.get_event_loop()
 
     async def on_stop_signal():
         logger.info("Video client %s's connection is being shut down...", peer_conn_id)
         await peer_conn.close()
-        loop.stop()
+        event_loop.stop()
 
     for sig_name in ("SIGINT", "SIGTERM"):
-        loop.add_signal_handler(
+        event_loop.add_signal_handler(
             getattr(signal, sig_name), lambda: asyncio.create_task(on_stop_signal())
         )
 
@@ -85,7 +85,7 @@ async def _start_video_conn(
             await peer_conn.close()
 
         if peer_conn.connectionState == "closed":
-            loop.stop()
+            event_loop.stop()
 
     media_blackhole = media.MediaBlackhole()
 
