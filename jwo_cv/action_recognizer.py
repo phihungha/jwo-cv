@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging
 from dataclasses import dataclass
 
 import movinets
@@ -19,14 +18,13 @@ IMAGE_SIZE = (224, 224)
 PICK_CLASS_ID = 0
 RETURN_CLASS_ID = 1
 
-logger = logging.getLogger(__name__)
+logger = utils.get_multiprocess_logger()
 
 
 @dataclass(frozen=True)
 class Action:
     """Describes an action recognition with class ID, type and confidence."""
 
-    class_id: int
     type: shop_event.ActionType
     confidence: float
 
@@ -34,6 +32,14 @@ class Action:
         return (
             f"{{class_id: {self.class_id}, type: {self.type}, "
             f"confidence: {self.confidence}}}"
+        )
+
+    @property
+    def class_id(self) -> int:
+        return (
+            PICK_CLASS_ID
+            if self.type == shop_event.ActionType.PICK
+            else RETURN_CLASS_ID
         )
 
 
@@ -89,14 +95,14 @@ class ActionRecognizer:
             device,
         )
 
-    def recognize(self, image: MatLike) -> Action | None:
+    def recognize(self, image: MatLike) -> tuple[tuple[Action, Action], Action | None]:
         """Recognize pick or return action from a video frame.
 
         Args:
-            image (MatLike): Image
+            image (MatLike): Video frame
 
         Returns:
-            tuple[Action, float] | None: Action or None if no action is detected.
+            tuple[Action | None, tuple[Action, Action]]: Actions and recognized action
         """
 
         self.frame_count_since_last_action += 1
@@ -111,21 +117,21 @@ class ActionRecognizer:
         pick_prob = action_probs[PICK_CLASS_ID].item()
         return_prob = action_probs[RETURN_CLASS_ID].item()
 
+        pick_action = Action(shop_event.ActionType.PICK, pick_prob)
+        return_action = Action(shop_event.ActionType.RETURN, return_prob)
+        actions = (pick_action, return_action)
+
         if pick_prob >= return_prob:
-            class_id = PICK_CLASS_ID
-            action_type = shop_event.ActionType.PICK
-            confidence = pick_prob
+            best_action = pick_action
         else:
-            class_id = RETURN_CLASS_ID
-            action_type = shop_event.ActionType.RETURN
-            confidence = return_prob
+            best_action = return_action
 
         if (
-            confidence >= self.min_confidence
+            best_action.confidence >= self.min_confidence
             and self.frame_count_since_last_action >= self.min_action_frame_span
         ):
             self.frame_count_since_last_action = 0
             self.model.clean_activation_buffers()
-            return Action(class_id, action_type, confidence)
+            return actions, best_action
 
-        return None
+        return actions, None

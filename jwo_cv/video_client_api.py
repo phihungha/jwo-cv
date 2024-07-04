@@ -15,7 +15,7 @@ from av.video import frame as av_vframe
 from jwo_cv import app_keys, shop_event, utils, vision
 from jwo_cv.utils import AppException, Config
 
-logger = utils.create_multiprocessing_logger()
+logger = utils.get_multiprocess_logger()
 
 media_relay = media.MediaRelay()
 routes = web.RouteTableDef()

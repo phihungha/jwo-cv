@@ -126,7 +126,7 @@ def get_log_handlers() -> list[logging.Handler]:
     return [handler]
 
 
-def create_multiprocessing_logger() -> logging.Logger:
+def get_multiprocess_logger() -> logging.Logger:
     """Get a logger which supports multiprocessing.
     Reference: https://stackoverflow.com/questions/641420/how-should-i-log-while-using-multiprocessing-in-python
 
