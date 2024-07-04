@@ -3,17 +3,17 @@ from __future__ import annotations
 import asyncio
 import logging
 import multiprocessing as mp
+import queue
 import uuid
 from multiprocessing import connection as mpc
 
 import aiortc
-import numpy as np
 from aiohttp import web
 from aiortc.contrib import media
 from av.video import frame as av_vframe
 
-from jwo_cv import app_keys, vision
-from jwo_cv.utils import AppException
+from jwo_cv import app_keys, shop_event, vision
+from jwo_cv.utils import AppException, Config
 
 logger = logging.getLogger(__name__)
 media_relay = media.MediaRelay()
@@ -30,39 +30,66 @@ async def offer(req: web.Request):
 
     use_debug_video: bool = req_body.get("use_debug_video", False)
 
-    offer = aiortc.RTCSessionDescription(sdp=req_body["sdp"], type=req_body["type"])
+    process_executor = req.app[app_keys.vision_process_executor]
+    answer_main_conn, answer_worker_conn = mp.Pipe(duplex=False)
+
+    process_executor.submit(
+        start_video_conn,
+        req_body["sdp"],
+        req_body["type"],
+        use_debug_video,
+        req.app[app_keys.config],
+        answer_worker_conn,
+        req.app[app_keys.shop_event_queue],
+    )
+
+    resp_body = answer_main_conn.recv()
+    return web.json_response(resp_body)
+
+
+async def _start_video_conn(
+    sdp: str,
+    type: str,
+    use_debug_video: bool,
+    config: Config,
+    answer_conn: mpc.Connection,
+    shop_event_queue: queue.Queue[shop_event.ShopEvent],
+):
+    offer = aiortc.RTCSessionDescription(sdp, type)
 
     peer_conn = aiortc.RTCPeerConnection()
     peer_conn_id = uuid.uuid4()
 
-    peer_conns = req.app[app_keys.video_client_conns]
-
     @peer_conn.on("connectionstatechange")
     async def on_conn_state_change():
         logger.info(
-            "Video client %s connection state is %s",
+            "Video client %s's connection state is %s",
             peer_conn_id,
             peer_conn.connectionState,
         )
 
         if peer_conn.connectionState == "failed":
             await peer_conn.close()
-            del peer_conns[peer_conn_id]
 
         if peer_conn.connectionState == "closed":
-            try:
-                del peer_conns[peer_conn_id]
-            except KeyError:
-                pass
+            exit()
 
     media_blackhole = media.MediaBlackhole()
 
     @peer_conn.on("track")
     def on_track(track: aiortc.MediaStreamTrack):
         if track.kind != "video":
+            logger.debug(
+                "Video client %s has non-video track. Ignoring...", peer_conn_id
+            )
             return
 
-        vision_track = VideoVisionTrack.from_track(track, req.app, use_debug_video)
+        vision_analyzer = vision.VisionAnalyzer.from_config(
+            config["analyzers"], shop_event_queue
+        )
+        vision_track = VideoVisionTrack.from_video_track(
+            track, vision_analyzer, use_debug_video
+        )
         if use_debug_video:
             peer_conn.addTrack(vision_track)
         else:
@@ -78,14 +105,45 @@ async def offer(req: web.Request):
         )
     await peer_conn.setLocalDescription(answer)
 
-    peer_conns[peer_conn_id] = peer_conn
-
     resp_body = {
         "id": str(peer_conn_id),
         "sdp": peer_conn.localDescription.sdp,
         "type": peer_conn.localDescription.type,
     }
-    return web.json_response(resp_body)
+    answer_conn.send(resp_body)
+    await asyncio.Event().wait()
+
+
+def start_video_conn(
+    sdp: str,
+    type: str,
+    use_debug_video: bool,
+    config: Config,
+    answer_conn: mpc.Connection,
+    shop_event_queue: queue.Queue[shop_event.ShopEvent],
+) -> None:
+    """Start video stream WebRTC connection from provided offer
+    and perform computer vision work on it.
+
+    Args:
+        sdp (str): Offer SDP
+        type (str): Offer type
+        use_debug_video (bool): Return debug video to client
+        config (Config): App config
+        answer_conn (mpc.Connection): Pipe connection to return peer connection answer
+        shop_event_queue (queue.Queue[shop_event.ShopEvent]): Shopping event queue
+    """
+    try:
+        asyncio.run(
+            _start_video_conn(
+                sdp, type, use_debug_video, config, answer_conn, shop_event_queue
+            )
+        )
+    except Exception as exc:
+        print(exc)
+
+
+media_relay = media.MediaRelay()
 
 
 class VideoVisionTrack(aiortc.MediaStreamTrack):
@@ -98,7 +156,7 @@ class VideoVisionTrack(aiortc.MediaStreamTrack):
     def __init__(
         self,
         input_track: aiortc.MediaStreamTrack,
-        frame_conn: mpc.Connection,
+        vision_analyzer: vision.VisionAnalyzer,
         use_debug_video: bool = False,
     ):
         """A video stream track which performs computer vision work on video
@@ -106,8 +164,7 @@ class VideoVisionTrack(aiortc.MediaStreamTrack):
 
         Args:
             input_track (aiortc.MediaStreamTrack): Receiving video track
-            frame_conn (mpc.Connection): Video frame (numpy.NDArray) pipe connection
-           to analysis worker process
+            vision_analyzer (VisionAnalyzer): Computer vision analyzer
             use_debug_video (bool, optional): Return debug video stream.
             Defaults to False.
         """
@@ -115,64 +172,53 @@ class VideoVisionTrack(aiortc.MediaStreamTrack):
         super().__init__()
 
         self.input_track = input_track
-        self.frame_conn = frame_conn
         self.use_debug_video = use_debug_video
+        self.vision_analyzer = vision_analyzer
 
     @classmethod
-    def from_track(
-        cls, track: aiortc.MediaStreamTrack, app: web.Application, use_debug_video: bool
+    def from_video_track(
+        cls,
+        track: aiortc.MediaStreamTrack,
+        vision_analyzer: vision.VisionAnalyzer,
+        use_debug_video: bool,
     ) -> VideoVisionTrack:
         """Create VideoAnalyzeTrack from a video track and start
         corresponding vision worker process.
 
         Args:
-            track (aiortc.MediaStreamTrack): Input video track
-            app (web.Application): Application
-            use_debug_video (bool): Return debug video stream
+            input_track (aiortc.MediaStreamTrack): Receiving video track
+            vision_analyzer (VisionAnalyzer): Computer vision analyzer
+            use_debug_video (bool, optional): Return debug video stream.
+            Defaults to False.
 
         Returns:
             VideoAnalyzeTrack
         """
 
-        frame_main_conn, frame_worker_conn = mp.Pipe()
-        shop_event_queue = app[app_keys.shop_event_queue]
-
-        process_executor = app[app_keys.vision_process_executor]
-        process_executor.submit(
-            vision.analyze_video,
-            app[app_keys.config],
-            app[app_keys.device],
-            frame_worker_conn,
-            shop_event_queue,
-            use_debug_video,
-        )
-
         track = media_relay.subscribe(track)
-        return cls(track, frame_main_conn, use_debug_video)
+        return cls(track, vision_analyzer, use_debug_video)
 
     async def recv(self):
-        video_frame = await self.input_track.recv()
+        video_frame: av_vframe.VideoFrame = await self.input_track.recv()  # type: ignore
         if video_frame.pts is None:
             raise AppException("Video frame has no frame count.")
 
         event = asyncio.get_event_loop()
 
-        await event.run_in_executor(
+        debug_video_ndarray = await event.run_in_executor(
             None,
-            self.frame_conn.send,
-            video_frame.to_ndarray(format="bgr24"),  # type: ignore
+            self.vision_analyzer.analyze_video_frame,
+            video_frame.to_ndarray(format="bgr24"),
+            self.use_debug_video,
         )
 
-        if self.use_debug_video:
-            debug_video_ndarray = await event.run_in_executor(
-                None, self.frame_conn.recv
+        if debug_video_ndarray is not None:
+            return_video_frame = av_vframe.VideoFrame.from_ndarray(
+                debug_video_ndarray, format="bgr24"
             )
         else:
-            debug_video_ndarray = np.zeros_like(video_frame)
+            return_video_frame = video_frame
 
-        debug_video_frame = av_vframe.VideoFrame.from_ndarray(
-            debug_video_ndarray, format="bgr24"
-        )
-        debug_video_frame.pts = video_frame.pts
-        debug_video_frame.time_base = video_frame.time_base
-        return debug_video_frame
+        return_video_frame.pts = video_frame.pts
+        return_video_frame.time_base = video_frame.time_base
+        return return_video_frame

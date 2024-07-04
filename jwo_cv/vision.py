@@ -3,19 +3,17 @@ from __future__ import annotations
 import logging
 import queue
 from collections import Counter
-from multiprocessing import connection as mpc
 from typing import Sequence
 
 import cv2
 import numpy as np
-import torch
-from cv2.typing import MatLike
+from cv2 import typing as cv2_t
 from ultralytics.utils import plotting
 
 from jwo_cv import action_recognizer as ar
 from jwo_cv import item_detector as id
 from jwo_cv import shop_event
-from jwo_cv.utils import Config
+from jwo_cv.utils import AppException, Config
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +32,7 @@ ACTION_TEXT_SCALE = 2
 
 
 def annotate_debug_info(
-    image: MatLike,
+    frame: cv2_t.MatLike,
     hands: Sequence[id.Detection],
     items: Sequence[id.Detection],
     action: ar.Action | None,
@@ -42,15 +40,15 @@ def annotate_debug_info(
     """Annotate provided image with debug info.
 
     Args:
-        image (MatLike): Image
-        hands (Sequence[id.Detection]): Detected hands
-        items (Sequence[id.Detection]): Detected items
+        frame (cv2_t.MatLike): Image
+        hands (Sequence[id.Detection]): Hand detections
+        items (Sequence[id.Detection]): Item detections
 
     Returns:
         np.ndarray: Annotated image
     """
 
-    annotator = plotting.Annotator(image)
+    annotator = plotting.Annotator(frame)
 
     for hand in hands:
         logger.debug(hand)
@@ -70,12 +68,12 @@ def annotate_debug_info(
             ANNO_TEXT_COLOR,
         )
 
-    image = annotator.result()
+    frame = annotator.result()
 
     if action:
         text = f"Action: {action.type} ({action.confidence:.2%})"
         cv2.putText(
-            image,
+            frame,
             text,
             org=ACTION_TEXT_ORIGIN,
             fontFace=TEXT_FONT,
@@ -88,47 +86,68 @@ def annotate_debug_info(
     return annotator.result()
 
 
-def analyze_video(
-    config: Config,
-    device: str,
-    frame_conn: mpc.Connection,
-    shop_event_queue: queue.Queue[shop_event.ShopEvent],
-    use_debug_video: bool,
-):
-    """Analyze video for shopping events.
-
-    Args:
-        config (Config): App config
-        device (str): Device to run vision ML models on
-        frame_conn (mpc.Connection): Video frame (numpy.NDArray) pipe connection
-        to main process
-        shop_event_queue (mp.Queue[shop_event.ShopEvent]): Shopping event queue
-        use_debug_video (bool): Create debug video
+class VisionAnalyzer:
+    """Analyzes video frames for shopping actions and related items
+    then sends it to provided event queue.
     """
 
-    torch.set_grad_enabled(False)
-    analyzers_config = config["analyzers"]
-    action_recognizer = ar.ActionRecognizer.from_config(
-        analyzers_config["action"], device
-    )
-    item_detector = id.ItemDetector.from_config(analyzers_config)
+    def __init__(
+        self,
+        action_recognizer: ar.ActionRecognizer,
+        item_detector: id.ItemDetector,
+        event_queue: queue.Queue[shop_event.ShopEvent],
+    ):
+        """Analyzes video frames for shopping actions and related items
+        then sends it to provided event queue.
 
-    while True:
-        frame = frame_conn.recv()
-        if frame is None:
-            return
+        Args:
+            action_recognizer (ar.ActionRecognizer): Action recognizer
+            item_detector (id.ItemDetector): Item detector
+            event_queue (queue.Queue[shop_event.ShopEvent]): Event queue
+        """
 
-        action = action_recognizer.recognize(frame)
+        self.action_recognizer = action_recognizer
+        self.item_detector = item_detector
+        self.event_queue = event_queue
 
-        if use_debug_video or action:
-            items, hands = item_detector.detect(frame)
+    @classmethod
+    def from_config(
+        cls,
+        config: Config,
+        event_queue: queue.Queue[shop_event.ShopEvent],
+    ):
+        action_recognizer = ar.ActionRecognizer.from_config(config["action"])
+        item_detector = id.ItemDetector.from_config(config)
 
-        if use_debug_video:
-            debug_frame = annotate_debug_info(frame, hands, items, action)
-            frame_conn.send(debug_frame)
+        return VisionAnalyzer(action_recognizer, item_detector, event_queue)
+
+    def analyze_video_frame(
+        self, frame: cv2_t.MatLike, debug=False
+    ) -> np.ndarray | None:
+        """Analyze provided video frame for a shopping event
+        then send it to event queue.
+
+        Args:
+            frame (cv2_t.MatLike): Video frame
+            debug (bool): Return frame with debug info
+
+        Returns:
+            np.ndarray | None: frame with debug info
+        """
+
+        action = self.action_recognizer.recognize(frame)
+
+        if debug or action:
+            items, hands = self.item_detector.detect(frame)
 
         if action and items:
             item_counts = dict(Counter(map(lambda i: i.class_id, items)))
             event = shop_event.ShopEvent(action.type, item_counts)
             logger.info(event)
-            shop_event_queue.put(event)
+            try:
+                self.event_queue.put(event, timeout=10)
+            except queue.Full:
+                raise AppException("Vision event queue is full.")
+
+        if debug:
+            return annotate_debug_info(frame, hands, items, action)
