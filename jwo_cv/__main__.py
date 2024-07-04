@@ -8,9 +8,20 @@ from concurrent import futures
 import toml
 from aiohttp import web
 
-from jwo_cv import app_keys, shop_event, video_client_api
+from jwo_cv import app_keys, shop_event, utils, video_client_api
 
-logger = logging.getLogger("jwo-cv")
+
+def setup_logging():
+    log_handlers = utils.get_log_handlers()
+
+    if os.getenv(utils.DEBUG_ENV_VAR) == "1":
+        logging.basicConfig(level=logging.DEBUG, handlers=log_handlers)
+    else:
+        logging.basicConfig(level=logging.INFO, handlers=log_handlers)
+
+
+setup_logging()
+logger = logging.getLogger("jwo_cv")
 
 
 async def setup_and_cleanup(app: web.Application):
@@ -41,15 +52,8 @@ async def setup_and_cleanup(app: web.Application):
 def main():
     app_config_path = os.getenv("JWO_CV_CONFIG_PATH") or "jwo_cv/config.dev.toml"
     app_config = toml.load(app_config_path)
-    general_config = app_config["general"]
-
-    if general_config["debug_log"]:
-        logging.basicConfig(level=logging.DEBUG)
-    else:
-        logging.basicConfig(level=logging.INFO)
 
     app = web.Application()
-
     app[app_keys.config] = app_config
     app[app_keys.vision_process_executor] = futures.ProcessPoolExecutor(
         mp_context=mp.get_context("forkserver")

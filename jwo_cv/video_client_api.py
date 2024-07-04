@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import asyncio
-import logging
 import multiprocessing as mp
 import queue
+import signal
 import uuid
 from multiprocessing import connection as mpc
 
@@ -12,10 +12,11 @@ from aiohttp import web
 from aiortc.contrib import media
 from av.video import frame as av_vframe
 
-from jwo_cv import app_keys, shop_event, vision
+from jwo_cv import app_keys, shop_event, utils, vision
 from jwo_cv.utils import AppException, Config
 
-logger = logging.getLogger(__name__)
+logger = utils.create_multiprocessing_logger()
+
 media_relay = media.MediaRelay()
 routes = web.RouteTableDef()
 
@@ -60,10 +61,22 @@ async def _start_video_conn(
     peer_conn = aiortc.RTCPeerConnection()
     peer_conn_id = uuid.uuid4()
 
+    loop = asyncio.get_event_loop()
+
+    async def on_stop_signal():
+        logger.info("Video client %s's connection is being shut down...", peer_conn_id)
+        await peer_conn.close()
+        loop.stop()
+
+    for sig_name in ("SIGINT", "SIGTERM"):
+        loop.add_signal_handler(
+            getattr(signal, sig_name), lambda: asyncio.create_task(on_stop_signal())
+        )
+
     @peer_conn.on("connectionstatechange")
     async def on_conn_state_change():
         logger.info(
-            "Video client %s's connection state is %s",
+            "Video client %s's connection state is '%s'",
             peer_conn_id,
             peer_conn.connectionState,
         )
@@ -72,7 +85,7 @@ async def _start_video_conn(
             await peer_conn.close()
 
         if peer_conn.connectionState == "closed":
-            exit()
+            loop.stop()
 
     media_blackhole = media.MediaBlackhole()
 
@@ -111,7 +124,6 @@ async def _start_video_conn(
         "type": peer_conn.localDescription.type,
     }
     answer_conn.send(resp_body)
-    await asyncio.Event().wait()
 
 
 def start_video_conn(
@@ -134,16 +146,15 @@ def start_video_conn(
         shop_event_queue (queue.Queue[shop_event.ShopEvent]): Shopping event queue
     """
     try:
-        asyncio.run(
+        event_loop = asyncio.get_event_loop()
+        event_loop.create_task(
             _start_video_conn(
                 sdp, type, use_debug_video, config, answer_conn, shop_event_queue
             )
         )
+        event_loop.run_forever()
     except Exception as exc:
-        print(exc)
-
-
-media_relay = media.MediaRelay()
+        logger.exception(exc)
 
 
 class VideoVisionTrack(aiortc.MediaStreamTrack):

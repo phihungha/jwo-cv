@@ -1,6 +1,10 @@
 from __future__ import annotations
 
+import logging
 import math
+import multiprocessing
+import os
+import sys
 from dataclasses import dataclass
 from typing import Any, Mapping, Sequence
 
@@ -9,6 +13,7 @@ import torch
 from numpy import typing as np_types
 
 Config = Mapping[str, Any]
+DEBUG_ENV_VAR = "JWO_CV_DEBUG"
 
 
 class AppException(Exception):
@@ -104,3 +109,40 @@ def get_device() -> str:
         if torch.backends.mps.is_available()
         else "cpu"
     )
+
+
+def get_log_handlers() -> list[logging.Handler]:
+    """Get standard log handlers.
+
+    Returns:
+        list[logging.Handler]: Log handler
+    """
+
+    formatter = logging.Formatter(
+        "[%(asctime)s|%(levelname)s||%(processName)s|%(name)s] %(message)s"
+    )
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setFormatter(formatter)
+    return [handler]
+
+
+def create_multiprocessing_logger() -> logging.Logger:
+    """Get a logger which supports multiprocessing.
+    Reference: https://stackoverflow.com/questions/641420/how-should-i-log-while-using-multiprocessing-in-python
+
+    Returns:
+        logging.Logger: Logger
+    """
+
+    logger = multiprocessing.get_logger()
+
+    if os.getenv(DEBUG_ENV_VAR) == "1":
+        logger.setLevel(logging.DEBUG)
+    else:
+        logger.setLevel(logging.INFO)
+
+    if not len(logger.handlers):
+        for handler in get_log_handlers():
+            logger.addHandler(handler)
+
+    return logger
