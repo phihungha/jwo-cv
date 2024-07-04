@@ -101,7 +101,7 @@ class ActionRecognizer:
 
         input: torch.Tensor = self.image_transforms(image).to(self.device)
         # Add frame and batch dimension
-        input = input[None, None]
+        input = input[None, :, None]
 
         output: torch.Tensor = self.model(input)[0]
         action_probs = output.softmax(0)
