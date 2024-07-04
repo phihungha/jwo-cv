@@ -9,7 +9,7 @@ import torch
 from cv2.typing import MatLike
 from torchvision.transforms import v2 as transforms
 
-from jwo_cv import shop_event
+from jwo_cv import shop_event, utils
 from jwo_cv.utils import Config
 
 # Model config reference: https://github.com/Atze00/MoViNet-pytorch
@@ -76,9 +76,11 @@ class ActionRecognizer:
     @classmethod
     def from_config(cls, config: Config, device: str) -> ActionRecognizer:
         model = movinets.MoViNet(MODEL_CONFIG, causal=True, pretrained=True)
-
         model_weights = torch.load(config["model_path"])
         model.load_state_dict(model_weights)
+
+        device = utils.get_device()
+        logger.debug("Run action recognition model on %s", device)
 
         return ActionRecognizer(
             model,

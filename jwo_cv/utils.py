@@ -92,3 +92,15 @@ class BoundingBox:
 
     def calc_distance(self, box: BoundingBox) -> float:
         return math.dist(self.center.to_xy_arr(), box.center.to_xy_arr())
+
+
+def get_device() -> str:
+    """Get device to run vision ML models on."""
+
+    return (
+        "cuda"
+        if torch.cuda.is_available()
+        else "mps"
+        if torch.backends.mps.is_available()
+        else "cpu"
+    )
