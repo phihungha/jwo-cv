@@ -95,7 +95,7 @@ class VisionAnalyzer:
         self,
         action_recognizer: ar.ActionRecognizer,
         item_detector: id.ItemDetector,
-        event_queue: queue.Queue[shop_event.ShopEvent],
+        event_queue: queue.Queue[shop_event.ShopEvent] | None,
     ):
         """Analyzes video frames for shopping actions and related items
         then sends it to provided event queue.
@@ -103,7 +103,7 @@ class VisionAnalyzer:
         Args:
             action_recognizer (ar.ActionRecognizer): Action recognizer
             item_detector (id.ItemDetector): Item detector
-            event_queue (queue.Queue[shop_event.ShopEvent]): Event queue
+            event_queue (queue.Queue[shop_event.ShopEvent] | None): Event queue
         """
 
         self.action_recognizer = action_recognizer
@@ -114,7 +114,7 @@ class VisionAnalyzer:
     def from_config(
         cls,
         config: Config,
-        event_queue: queue.Queue[shop_event.ShopEvent],
+        event_queue: queue.Queue[shop_event.ShopEvent] | None,
     ):
         action_recognizer = ar.ActionRecognizer.from_config(config["action"])
         item_detector = id.ItemDetector.from_config(config)
@@ -144,10 +144,12 @@ class VisionAnalyzer:
             item_counts = dict(Counter(map(lambda i: i.class_id, items)))
             event = shop_event.ShopEvent(action.type, item_counts)
             logger.info(event)
-            try:
-                self.event_queue.put(event, timeout=10)
-            except queue.Full:
-                raise AppException("Vision event queue is full.")
+
+            if self.event_queue is not None:
+                try:
+                    self.event_queue.put(event, timeout=10)
+                except queue.Full:
+                    raise AppException("Vision event queue is full.")
 
         if debug:
             return annotate_debug_info(frame, hands, items, action)

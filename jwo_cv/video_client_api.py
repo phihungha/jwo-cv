@@ -54,7 +54,7 @@ async def _start_video_conn(
     use_debug_video: bool,
     config: Config,
     answer_conn: mpc.Connection,
-    shop_event_queue: queue.Queue[shop_event.ShopEvent],
+    shop_event_queue: queue.Queue[shop_event.ShopEvent] | None,
 ):
     offer = aiortc.RTCSessionDescription(sdp, type)
 
@@ -132,7 +132,7 @@ def start_video_conn(
     use_debug_video: bool,
     config: Config,
     answer_conn: mpc.Connection,
-    shop_event_queue: queue.Queue[shop_event.ShopEvent],
+    shop_event_queue: queue.Queue[shop_event.ShopEvent] | None,
 ) -> None:
     """Start video stream WebRTC connection from provided offer
     and perform computer vision work on it.
@@ -143,7 +143,7 @@ def start_video_conn(
         use_debug_video (bool): Return debug video to client
         config (Config): App config
         answer_conn (mpc.Connection): Pipe connection to return peer connection answer
-        shop_event_queue (queue.Queue[shop_event.ShopEvent]): Shopping event queue
+        shop_event_queue (queue.Queue[shop_event.ShopEvent] | None): Shop event queue
     """
     try:
         event_loop = asyncio.get_event_loop()

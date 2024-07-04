@@ -1,6 +1,3 @@
-[general]
-debug_log = false
-
 [video_client_api]
 port = 6000
 
@@ -11,15 +8,15 @@ namespace = "cart"
 
 [analyzers]
 [analyzers.action]
-model_path = "jwo_cv/model/action_recognition_movinet_a2_stream.pth"
-min_confidence = 0.9
+model_path = "jwo_cv/models/action_recognition_movinet_a2_stream.pth"
+min_confidence = 0.8
 min_action_frame_span = 20
 
 [analyzers.item]
-model_path = "jwo_cv/config/item_detection_yolov8s.pt"
+model_path = "jwo_cv/models/item_detection_yolov8s.pt"
 min_confidence = 0.9
 max_hand_distance = 150
 
 [analyzers.hand]
-model_path = "jwo_cv/config/hand_detection_yolov8s.pt"
+model_path = "jwo_cv/models/hand_detection_yolov8s.pt"
 min_confidence = 0.6

@@ -58,8 +58,12 @@ def main():
     app[app_keys.vision_process_executor] = futures.ProcessPoolExecutor(
         mp_context=mp.get_context("forkserver")
     )
-    queue_manager = mp.Manager()
-    app[app_keys.shop_event_queue] = queue_manager.Queue()
+
+    if app_config["shop_event"]["emit"]:
+        queue_manager = mp.Manager()
+        app[app_keys.shop_event_queue] = queue_manager.Queue()
+    else:
+        app[app_keys.shop_event_queue] = None
 
     app.cleanup_ctx.append(setup_and_cleanup)
     app.add_routes(video_client_api.routes)
