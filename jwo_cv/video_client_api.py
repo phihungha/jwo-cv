@@ -10,11 +10,12 @@ import aiortc
 import numpy as np
 from aiohttp import web
 from aiortc.contrib import media
+from av.video import frame as av_vframe
 
 from jwo_cv import app_keys, vision
 from jwo_cv.utils import AppException
 
-logger = logging.Logger(__name__)
+logger = logging.getLogger(__name__)
 media_relay = media.MediaRelay()
 routes = web.RouteTableDef()
 
@@ -80,7 +81,7 @@ async def offer(req: web.Request):
     peer_conns[peer_conn_id] = peer_conn
 
     resp_body = {
-        "id": peer_conn_id,
+        "id": str(peer_conn_id),
         "sdp": peer_conn.localDescription.sdp,
         "type": peer_conn.localDescription.type,
     }
@@ -150,14 +151,28 @@ class VideoVisionTrack(aiortc.MediaStreamTrack):
         return cls(track, frame_main_conn, use_debug_video)
 
     async def recv(self):
-        video_frame = (await self.input_track.recv()).to_ndarray(format="bgr24")  # type: ignore
+        video_frame = await self.input_track.recv()
+        if video_frame.pts is None:
+            raise AppException("Video frame has no frame count.")
 
-        loop = asyncio.get_event_loop()
-        await loop.run_in_executor(None, self.frame_conn.send, video_frame)
+        event = asyncio.get_event_loop()
+
+        await event.run_in_executor(
+            None,
+            self.frame_conn.send,
+            video_frame.to_ndarray(format="bgr24"),  # type: ignore
+        )
 
         if self.use_debug_video:
-            return_video_frame = await loop.run_in_executor(None, self.frame_conn.recv)
+            debug_video_ndarray = await event.run_in_executor(
+                None, self.frame_conn.recv
+            )
         else:
-            return_video_frame = np.zeros_like(video_frame)
+            debug_video_ndarray = np.zeros_like(video_frame)
 
-        return return_video_frame
+        debug_video_frame = av_vframe.VideoFrame.from_ndarray(
+            debug_video_ndarray, format="bgr24"
+        )
+        debug_video_frame.pts = video_frame.pts
+        debug_video_frame.time_base = video_frame.time_base
+        return debug_video_frame
