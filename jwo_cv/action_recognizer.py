@@ -74,7 +74,7 @@ class ActionRecognizer:
         self.frame_count_since_last_action = 0
 
     @classmethod
-    def from_config(cls, config: Config, device: str) -> ActionRecognizer:
+    def from_config(cls, config: Config) -> ActionRecognizer:
         model = movinets.MoViNet(MODEL_CONFIG, causal=True, pretrained=True)
         model_weights = torch.load(config["model_path"])
         model.load_state_dict(model_weights)
