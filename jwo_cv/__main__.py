@@ -73,11 +73,13 @@ def main():
 
     app[app_keys.config] = app_config
     app[app_keys.device] = device
-    app[app_keys.shop_event_queue] = mp.Queue()
     app[app_keys.video_client_conns] = dict()
     app[app_keys.vision_process_executor] = futures.ProcessPoolExecutor(
         mp_context=mp.get_context("forkserver")
     )
+    queue_manager = mp.Manager()
+    app[app_keys.shop_event_queue] = queue_manager.Queue()
+
     app.cleanup_ctx.append(setup_and_cleanup)
     app.add_routes(video_client_api.routes)
 
