@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-import multiprocessing as mp
+import queue
 from collections import Counter
 from multiprocessing import connection as mpc
 from typing import Sequence
@@ -92,7 +92,7 @@ def analyze_video(
     config: Config,
     device: str,
     frame_conn: mpc.Connection,
-    shop_event_queue: mp.Queue[shop_event.ShopEvent],
+    shop_event_queue: queue.Queue[shop_event.ShopEvent],
     use_debug_video: bool,
 ):
     """Analyze video for shopping events.

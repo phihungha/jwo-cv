@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import multiprocessing as mp
+import queue
 from dataclasses import dataclass
 from enum import Enum
 
@@ -57,7 +57,7 @@ def create_message(event: ShopEvent) -> dict:
 async def begin_emit_shop_events(
     url: str,
     namespace: str,
-    event_queue: mp.Queue[ShopEvent],
+    event_queue: queue.Queue[ShopEvent],
 ) -> None:
     """Start emitting shopping events from a multiprocessing queue
     to server at provided URL.
