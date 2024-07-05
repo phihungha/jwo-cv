@@ -7,11 +7,6 @@ from ultralytics import YOLO
 
 from jwo_cv.utils import BoundingBox, Config
 
-ITEM_DETECTOR_MODEL_PATH = "jwo_cv/config/item_yolov8n.pt"
-HAND_DETECTOR_MODEL_PATH = "jwo_cv/config/item_yolov8n.pt"
-# TODO: Remove once the models are re-configured with no person class
-PERSON_CLASS_ID = 0
-
 
 @dataclass(frozen=True)
 class Detection:
@@ -62,6 +57,9 @@ class Detector:
         detections: list[Detection] = []
 
         for output in outputs:
+            if output.boxes is None:
+                continue
+
             for result in output.boxes:
                 confidence = float(result.conf)
                 if confidence < self.min_confidence:
@@ -81,16 +79,10 @@ class HandDetector(Detector):
 
     @classmethod
     def from_config(cls, config: Config) -> HandDetector:
-        model = YOLO(ITEM_DETECTOR_MODEL_PATH)
         return cls(
-            model,
+            YOLO(config["model_path"]),
             config["min_confidence"],
         )
-
-    def detect(self, image: MatLike) -> list[Detection]:
-        detections = super().detect(image)
-        # TODO: Remove once the models are re-configured with no person class
-        return list(filter(lambda d: d.class_id == PERSON_CLASS_ID, detections))
 
 
 class ItemDetector(Detector):
@@ -118,10 +110,9 @@ class ItemDetector(Detector):
 
     @classmethod
     def from_config(cls, config: Config) -> ItemDetector:
-        model = YOLO(ITEM_DETECTOR_MODEL_PATH)
         hand_detector = HandDetector.from_config(config["hand"])
         return cls(
-            model,
+            YOLO(config["item"]["model_path"]),
             hand_detector,
             config["item"]["min_confidence"],
             config["item"]["max_hand_distance"],
@@ -141,12 +132,10 @@ class ItemDetector(Detector):
         hands = self.hand_detector.detect(image)
 
         def filter_item(item: Detection):
-            # TODO: Remove once the models are re-configured with no person class
-            is_not_person = item.class_id != PERSON_CLASS_ID
-            is_near_hand = any(
+            return any(
                 item.box.calc_distance(hand.box) <= self.max_hand_distance
                 for hand in hands
             )
-            return is_not_person and is_near_hand
 
-        return list(filter(filter_item, items)), hands
+        items_in_hands = list(filter(filter_item, items))
+        return items_in_hands, hands

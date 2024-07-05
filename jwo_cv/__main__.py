@@ -1,73 +1,76 @@
+import asyncio
 import logging
 import logging.config
+import multiprocessing as mp
+import os
+from concurrent import futures
 
-import cv2
 import toml
-import torch
+from aiohttp import web
 
-from jwo_cv import action_detector as ad
-from jwo_cv import item_detector as id
-from jwo_cv import vision
-from jwo_cv.utils import Size
-
-APP_CONFIG_PATH = "jwo_cv/config/config.toml"
-
-torch.set_grad_enabled(False)
-
-logging.basicConfig()
-logger = logging.getLogger("jwo-cv")
+from jwo_cv import app_keys, shop_event, utils, video_client_api
 
 
-def getDevice() -> str:
-    """Get device to run models on."""
+def setup_logging():
+    log_handlers = utils.get_log_handlers()
 
-    return (
-        "cuda"
-        if torch.cuda.is_available()
-        else "mps"
-        if torch.backends.mps.is_available()
-        else "cpu"
-    )
-
-
-def main() -> None:
-    config = toml.load(APP_CONFIG_PATH)
-    general_config = config["general"]
-
-    if general_config["debug_log"]:
-        logging.root.setLevel(logging.DEBUG)
+    if os.getenv(utils.DEBUG_ENV_VAR) == "1":
+        logging.basicConfig(level=logging.DEBUG, handlers=log_handlers)
     else:
-        logging.root.setLevel(logging.INFO)
+        logging.basicConfig(level=logging.INFO, handlers=log_handlers)
 
-    video_config = config["video_source"]
-    image_size = Size.from_wh_arr(video_config["size"])
-    video_source = vision.getVideoSource(video_config["source_idx"], image_size)
 
-    detectors_config = config["detectors"]
-    device = getDevice()
-    logger.info("Use %s", device)
+setup_logging()
+logger = logging.getLogger("jwo_cv")
 
-    action_classifier = ad.ActionClassifier.from_config(
-        detectors_config["action"], device
+
+async def setup_and_cleanup(app: web.Application):
+    shop_event_config = app[app_keys.config]["shop_event"]
+    if shop_event_config["emit"]:
+        url = shop_event_config["url"]
+        namespace = shop_event_config["namespace"]
+        shop_event_queue = app[app_keys.shop_event_queue]
+
+        app[app_keys.shop_event_emit_task] = asyncio.create_task(
+            shop_event.begin_emit_shop_events(url, namespace, shop_event_queue)
+        )
+
+    yield
+
+    logger.info("Shutting down...")
+
+    app[app_keys.vision_process_executor].shutdown()
+    logger.debug("Shut down vision worker processes.")
+
+    if shop_event_config["emit"]:
+        shop_event_emit_task = app[app_keys.shop_event_emit_task]
+        shop_event_emit_task.cancel()
+        await shop_event_emit_task
+        logger.debug("Stopped emitting shopping events.")
+
+
+def main():
+    app_config_path = os.getenv("JWO_CV_CONFIG_PATH") or "jwo_cv/config.dev.toml"
+    app_config = toml.load(app_config_path)
+
+    app = web.Application()
+    app[app_keys.config] = app_config
+    app[app_keys.vision_process_executor] = futures.ProcessPoolExecutor(
+        mp_context=mp.get_context("forkserver")
     )
-    item_detector = id.ItemDetector.from_config(detectors_config)
 
-    use_debug_video: bool = general_config["debug_video"]
+    if app_config["shop_event"]["emit"]:
+        queue_manager = mp.Manager()
+        app[app_keys.shop_event_queue] = queue_manager.Queue()
+    else:
+        app[app_keys.shop_event_queue] = None
 
-    if use_debug_video:
-        cv2.namedWindow("Debug")
+    app.cleanup_ctx.append(setup_and_cleanup)
+    app.add_routes(video_client_api.routes)
 
-    # NOTE: Find a way to pass this generator into the API function.
-    shopping_event_generator = vision.processVideo(
-        video_source, action_classifier, item_detector, use_debug_video
-    )
-    # NOTE: Do this in the API function.
-    for event in shopping_event_generator:
-        logger.info(event)
-
-    if use_debug_video:
-        cv2.destroyWindow("Debug")
-    video_source.release()
+    api_port = app_config["video_client_api"]["port"]
+    logger.info(f"Begin listening for video client connection offer on {api_port}.")
+    web.run_app(app, port=api_port)
 
 
 if __name__ == "__main__":

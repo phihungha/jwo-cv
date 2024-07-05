@@ -1,0 +1,7 @@
+services:
+  jwo-cv-service:
+    environment:
+      - JWO_CV_CONFIG_PATH=${JWO_CV_CONFIG_PATH:-}
+      - JWO_CV_DEBUG=${JWO_CV_DEBUG:-0}
+    volumes:
+      - .:/app

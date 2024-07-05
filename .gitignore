@@ -1,5 +1,9 @@
 # Editors & IDEs
-.vscode/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/launch.json
+
 .idea/
 *.code-workspace
 *.swp

@@ -1,13 +1,19 @@
 from __future__ import annotations
 
+import logging
 import math
+import multiprocessing
+import os
+import sys
 from dataclasses import dataclass
 from typing import Any, Mapping, Sequence
 
 import numpy as np
+import torch
 from numpy import typing as np_types
 
 Config = Mapping[str, Any]
+DEBUG_ENV_VAR = "JWO_CV_DEBUG"
 
 
 class AppException(Exception):
@@ -25,8 +31,8 @@ class Size:
         return f"({self.width}, {self.height})"
 
     @classmethod
-    def from_wh_arr(cls, arr: np_types.NDArray | Sequence[int]) -> Size:
-        return Size(arr[0], arr[1])
+    def from_wh_arr(cls, arr: np_types.NDArray | torch.Tensor | Sequence[int]) -> Size:
+        return Size(int(arr[0]), int(arr[1]))
 
     def to_wh_arr(self) -> np_types.NDArray:
         return np.array([self.width, self.height])
@@ -71,7 +77,9 @@ class BoundingBox:
         )
 
     @classmethod
-    def from_xyxy_arr(cls, array: np_types.NDArray | Sequence[int]) -> BoundingBox:
+    def from_xyxy_arr(
+        cls, array: np_types.NDArray | torch.Tensor | Sequence[int]
+    ) -> BoundingBox:
         return cls(
             Position(int(array[0]), int(array[1])),
             Position(int(array[2]), int(array[3])),
@@ -89,3 +97,52 @@ class BoundingBox:
 
     def calc_distance(self, box: BoundingBox) -> float:
         return math.dist(self.center.to_xy_arr(), box.center.to_xy_arr())
+
+
+def get_device() -> str:
+    """Get device to run vision ML models on."""
+
+    return (
+        "cuda"
+        if torch.cuda.is_available()
+        else "mps"
+        if torch.backends.mps.is_available()
+        else "cpu"
+    )
+
+
+def get_log_handlers() -> list[logging.Handler]:
+    """Get standard log handlers.
+
+    Returns:
+        list[logging.Handler]: Log handler
+    """
+
+    formatter = logging.Formatter(
+        "[%(asctime)s|%(levelname)s|%(processName)s|%(name)s] %(message)s"
+    )
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setFormatter(formatter)
+    return [handler]
+
+
+def get_multiprocess_logger() -> logging.Logger:
+    """Get a logger which supports multiprocessing.
+    Reference: https://stackoverflow.com/questions/641420/how-should-i-log-while-using-multiprocessing-in-python
+
+    Returns:
+        logging.Logger: Logger
+    """
+
+    logger = multiprocessing.get_logger()
+
+    if os.getenv(DEBUG_ENV_VAR) == "1":
+        logger.setLevel(logging.DEBUG)
+    else:
+        logger.setLevel(logging.INFO)
+
+    if not len(logger.handlers):
+        for handler in get_log_handlers():
+            logger.addHandler(handler)
+
+    return logger
