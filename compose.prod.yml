@@ -1,0 +1,6 @@
+services:
+  jwo-cv-service:
+    environment:
+      - JWO_CV_CONFIG_PATH=/app/config.yml
+    volumes:
+      - ${JWO_CV_CONFIG_PATH:-./jwo_cv/config.prod.toml}:/app/config.yml:ro

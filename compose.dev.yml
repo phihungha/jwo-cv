@@ -1,4 +1,0 @@
-services:
-  api-server:
-    volumes:
-      - ./jwo-cv:/app/jwo-cv
