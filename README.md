@@ -1,13 +1,15 @@
 # Computer Vision component of JWO Shopping System
 
-Detect shopping actions and product items from real-time video then stream them via a real-time API.
+Recognize shopping actions and product items from real-time video stream.
 
 ## Technologies
 
 - YOLOv8 via Ultralytics
 - Movinet via PyTorch
 - OpenCV
-- Flask API + WebSocket
+- SocketIO
+- aiohttp
+- WebRTC via aiortc
 
 ## Members
 
@@ -27,4 +29,4 @@ Detect shopping actions and product items from real-time video then stream them 
 1. Run `poetry shell` in repository folder to enter virtual environment
 2. Run `python -m jwo_cv`
 
-Note: Set `debug_video` to false in `jwo_cv/config/config.toml` to disable video display
+Note: Set `emit` to `false` in `jwo_cv/config/config.dev.toml` to disable emitting shopping events
