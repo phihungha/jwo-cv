@@ -13,10 +13,10 @@ min_confidence = 0.7
 min_action_frame_span = 20
 
 [analyzers.item]
-model_path = "jwo_cv/models/item_detection_yolov8s.pt"
-min_confidence = 0.9
-max_hand_distance = 50
+model_path = "jwo_cv/models/item_detection_yolov8n.pt"
+min_confidence = 0.7
+max_hand_distance = 170
 
 [analyzers.hand]
-model_path = "jwo_cv/models/hand_detection_yolov8s.pt"
+model_path = "jwo_cv/models/hand_detection_yolov8n.pt"
 min_confidence = 0.6
