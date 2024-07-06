@@ -4,7 +4,7 @@ port = 6000
 [shop_event]
 emit = false
 url = "http://localhost:5000"
-namespace = "cart"
+namespace = "/cart"
 
 [analyzers]
 enable = true

@@ -19,6 +19,7 @@ movinet-pytorch = { git = "https://github.com/Atze00/MoViNet-pytorch.git" }
 python-socketio = { extras = ["asyncio_client"], version = "^5.11.2" }
 aiortc = "^1.9.0"
 aiohttp = { version = "^3.9.5", extras = ["speedups"] }
+websocket-client = "^1.8.0"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.5.0"
