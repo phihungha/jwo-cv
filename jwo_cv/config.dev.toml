@@ -8,7 +8,7 @@ namespace = "cart"
 
 [analyzers]
 [analyzers.action]
-model_path = "jwo_cv/models/action_recognition_movinet_a2_stream.pth"
+model_path = "jwo_cv/models/action_recognition_movinet_a1_stream.pth"
 min_confidence = 0.7
 min_action_frame_span = 20
 
