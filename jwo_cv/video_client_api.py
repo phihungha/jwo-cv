@@ -97,16 +97,20 @@ async def _start_video_conn(
             )
             return
 
-        vision_analyzer = vision.VisionAnalyzer.from_config(
-            config["analyzers"], shop_event_queue
-        )
-        vision_track = VideoVisionTrack.from_video_track(
-            track, vision_analyzer, use_debug_video
-        )
-        if use_debug_video:
-            peer_conn.addTrack(vision_track)
+        if config["analyzers"]["enable"]:
+            vision_analyzer = vision.VisionAnalyzer.from_config(
+                config["analyzers"], shop_event_queue
+            )
+            return_track = VideoVisionTrack.from_video_track(
+                track, vision_analyzer, use_debug_video
+            )
         else:
-            media_blackhole.addTrack(vision_track)
+            return_track = media_relay.subscribe(track)
+
+        if use_debug_video:
+            peer_conn.addTrack(return_track)
+        else:
+            media_blackhole.addTrack(return_track)
 
     await peer_conn.setRemoteDescription(offer)
     await media_blackhole.start()

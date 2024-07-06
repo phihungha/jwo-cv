@@ -12,7 +12,7 @@ from jwo_cv import shop_event, utils
 from jwo_cv.utils import Config
 
 # Model config reference: https://github.com/Atze00/MoViNet-pytorch
-MODEL_CONFIG = movinets.config._C.MODEL.MoViNetA2
+MODEL_CONFIG = movinets.config._C.MODEL.MoViNetA1
 IMAGE_SIZE = (172, 172)
 
 PICK_CLASS_ID = 0
