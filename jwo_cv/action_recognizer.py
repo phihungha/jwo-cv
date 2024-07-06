@@ -76,8 +76,9 @@ class ActionRecognizer:
             ]
         )
 
-        self.buffer_frame_count = 0
         self.frame_count_since_last_action = 0
+        self.last_pick_prob = 0
+        self.last_return_prob = 0
 
     @classmethod
     def from_config(cls, config: Config) -> ActionRecognizer:
@@ -114,20 +115,26 @@ class ActionRecognizer:
         output: torch.Tensor = self.model(input)[0]
         action_probs = output.softmax(0)
 
-        pick_prob = action_probs[PICK_CLASS_ID].item()
-        return_prob = action_probs[RETURN_CLASS_ID].item()
+        pick_prob = float(action_probs[PICK_CLASS_ID].item())
+        return_prob = float(action_probs[RETURN_CLASS_ID].item())
 
         pick_action = Action(shop_event.ActionType.PICK, pick_prob)
         return_action = Action(shop_event.ActionType.RETURN, return_prob)
         actions = (pick_action, return_action)
 
-        if pick_prob >= return_prob:
-            best_action = pick_action
-        else:
+        best_action = None
+
+        if return_prob - self.last_return_prob > 0:
             best_action = return_action
+        if pick_prob - self.last_pick_prob > 0:
+            best_action = pick_action
+
+        self.last_pick_prob = pick_prob
+        self.last_return_prob = return_prob
 
         if (
-            best_action.confidence >= self.min_confidence
+            best_action
+            and best_action.confidence >= self.min_confidence
             and self.frame_count_since_last_action >= self.min_action_frame_span
         ):
             self.frame_count_since_last_action = 0
