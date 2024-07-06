@@ -3,5 +3,5 @@ services:
     environment:
       - JWO_CV_CONFIG_PATH=/app/config.yml
     volumes:
-      - ${JWO_CV_CONFIG_PATH:-./config.prod.toml}:/app/config.yml:ro
+      - ${JWO_CV_CONFIG_PATH:-./config.prod.toml}:/app/config.toml:ro
       - ${JWO_CV_MODEL_DIR_PATH:-./models}:/app/models:ro
