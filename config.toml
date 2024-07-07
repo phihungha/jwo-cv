@@ -17,7 +17,7 @@ min_action_frame_span = 20
 [analyzers.item]
 model_path = "models/item_detection_yolov8n.pt"
 min_confidence = 0.5
-max_hand_distance = 150
+min_hand_iou = 0.05
 
 [analyzers.hand]
 model_path = "models/hand_detection_yolov8n.pt"

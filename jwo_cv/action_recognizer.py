@@ -50,7 +50,6 @@ class ActionRecognizer:
         self,
         model: movinets.MoViNet,
         min_confidence: float,
-        min_detection_frame_span: int,
         device: str,
     ) -> None:
         """Recognizes action in video using Movinet.
@@ -58,12 +57,10 @@ class ActionRecognizer:
         Args:
             model (movinets.MoViNet): Model
             min_confidence (float): Minimum detection confidence
-            max_detection_frame_span (int): Min num of frames between detection
             device (str): Device to run model on
         """
 
         self.min_confidence = min_confidence
-        self.min_action_frame_span = min_detection_frame_span
         self.device = device
 
         self.model = model.to(self.device).eval()
@@ -75,10 +72,6 @@ class ActionRecognizer:
                 transforms.Resize(size=IMAGE_SIZE),
             ]
         )
-
-        self.frame_count_since_last_action = 0
-        self.last_pick_prob = 0
-        self.last_return_prob = 0
 
     @classmethod
     def from_config(cls, config: Config) -> ActionRecognizer:
@@ -92,7 +85,6 @@ class ActionRecognizer:
         return ActionRecognizer(
             model,
             config["min_confidence"],
-            config["min_action_frame_span"],
             device,
         )
 
@@ -105,8 +97,6 @@ class ActionRecognizer:
         Returns:
             tuple[Action | None, tuple[Action, Action]]: Actions and recognized action
         """
-
-        self.frame_count_since_last_action += 1
 
         input: torch.Tensor = self.image_transforms(image).to(self.device)
         # Add frame and batch dimension
@@ -124,20 +114,14 @@ class ActionRecognizer:
 
         best_action = None
 
-        if return_prob - self.last_return_prob > 0:
-            best_action = return_action
-        if pick_prob - self.last_pick_prob > 0:
+        if pick_prob > return_prob:
             best_action = pick_action
+        elif return_prob > pick_prob:
+            best_action = return_action
+        else:
+            best_action = None
 
-        self.last_pick_prob = pick_prob
-        self.last_return_prob = return_prob
-
-        if (
-            best_action
-            and best_action.confidence >= self.min_confidence
-            and self.frame_count_since_last_action >= self.min_action_frame_span
-        ):
-            self.frame_count_since_last_action = 0
+        if best_action and best_action.confidence >= self.min_confidence:
             self.model.clean_activation_buffers()
             return actions, best_action
 
