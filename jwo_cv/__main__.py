@@ -60,7 +60,7 @@ async def setup_and_cleanup(app: web.Application):
 
 
 def main():
-    app_config_path = os.getenv("JWO_CV_CONFIG_PATH") or "jwo_cv/config.dev.toml"
+    app_config_path = os.getenv("JWO_CV_CONFIG_PATH") or "config.toml"
     app_config = toml.load(app_config_path)
 
     # Download pre-trained weights if not exist
