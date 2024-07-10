@@ -103,7 +103,7 @@ class ActionRecognizer:
         input = input[None, :, None]
 
         output: torch.Tensor = self.model(input)[0]
-        action_probs = output.softmax(0)
+        action_probs = output.softmax(dim=0)
 
         pick_prob = float(action_probs[PICK_CLASS_ID].item())
         return_prob = float(action_probs[RETURN_CLASS_ID].item())
@@ -112,11 +112,10 @@ class ActionRecognizer:
         return_action = Action(shop_event.ActionType.RETURN, return_prob)
         actions = (pick_action, return_action)
 
-        best_action = None
-
-        if pick_prob > return_prob:
+        best_action_class = action_probs.argmax(dim=0).item()
+        if best_action_class == PICK_CLASS_ID:
             best_action = pick_action
-        elif return_prob > pick_prob:
+        elif best_action_class == RETURN_CLASS_ID:
             best_action = return_action
         else:
             best_action = None

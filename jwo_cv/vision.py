@@ -136,7 +136,7 @@ class VisionAnalyzer:
 
         items, hands = self.item_detector.detect(frame)
 
-        if items:
+        if hands:
             actions, recognized_action = self.action_recognizer.recognize(frame)
         else:
             self.action_recognizer.model.clean_activation_buffers()
