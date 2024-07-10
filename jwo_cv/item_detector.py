@@ -93,7 +93,7 @@ class ItemDetector(Detector):
         model: YOLO,
         hand_detector: HandDetector,
         min_confidence: float,
-        max_hand_distance: float,
+        min_hand_iou: float,
     ) -> None:
         """Detects and classifies product items hold in hands in an image.
 
@@ -101,12 +101,12 @@ class ItemDetector(Detector):
             model (YOLO): Ultralytics YOLO model
             hand_detector (HandDetector): Hand detector
             min_confidence (float): Minium detection confidence
-            max_hand_distance (float): Max distance from hands to detect
+            min_hand_iou (float): Min IoU of item and hand bounding boxes
         """
 
         super().__init__(model, min_confidence)
         self.hand_detector = hand_detector
-        self.max_hand_distance = max_hand_distance
+        self.min_hand_iou = min_hand_iou
 
     @classmethod
     def from_config(cls, config: Config) -> ItemDetector:
@@ -115,7 +115,7 @@ class ItemDetector(Detector):
             YOLO(config["item"]["model_path"]),
             hand_detector,
             config["item"]["min_confidence"],
-            config["item"]["max_hand_distance"],
+            config["item"]["min_hand_iou"],
         )
 
     def detect(self, image: MatLike) -> tuple[list[Detection], list[Detection]]:
@@ -133,8 +133,7 @@ class ItemDetector(Detector):
 
         def filter_item(item: Detection):
             return any(
-                item.box.calc_distance(hand.box) <= self.max_hand_distance
-                for hand in hands
+                item.box.calc_iou(hand.box) >= self.min_hand_iou for hand in hands
             )
 
         items_in_hands = list(filter(filter_item, items))

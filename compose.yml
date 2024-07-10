@@ -1,11 +1,12 @@
 services:
   jwo-cv-service:
     container_name: jwo-cv-service
-    image: haphihung55/jwo-cv-service
+    image: haphihung55/jwo-cv-service:latest
     build: .
+    environment:
+      - JWO_CV_DEBUG=${JWO_CV_DEBUG:-0}
     ports:
-      - 5000:5000
-      - 6000:6000
+      - ${SERVICE_PORT:-6000}:6000
     deploy:
       resources:
         reservations:

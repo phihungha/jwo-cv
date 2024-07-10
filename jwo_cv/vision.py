@@ -107,6 +107,7 @@ class VisionAnalyzer:
         self.action_recognizer = action_recognizer
         self.item_detector = item_detector
         self.event_queue = event_queue
+        self.just_detected = False
 
     @classmethod
     def from_config(
@@ -133,14 +134,21 @@ class VisionAnalyzer:
             np.ndarray | None: frame with debug info
         """
 
-        actions, recognized_action = self.action_recognizer.recognize(frame)
+        items, hands = self.item_detector.detect(frame)
 
-        if debug or recognized_action:
-            items, hands = self.item_detector.detect(frame)
+        if hands:
+            actions, recognized_action = self.action_recognizer.recognize(frame)
+        else:
+            self.action_recognizer.model.clean_activation_buffers()
+            actions, recognized_action = [], None
 
-        if recognized_action and items:
+        if not items:
+            self.just_detected = False
+
+        if recognized_action and items and not self.just_detected:
             item_counts = dict(Counter(map(lambda i: i.class_id, items)))
             event = shop_event.ShopEvent(recognized_action.type, item_counts)
+            self.just_detected = True
             logger.info(event)
 
             if self.event_queue is not None:

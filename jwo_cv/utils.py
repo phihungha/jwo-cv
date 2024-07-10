@@ -10,6 +10,7 @@ from typing import Any, Mapping, Sequence
 
 import numpy as np
 import torch
+import torchvision
 from numpy import typing as np_types
 
 Config = Mapping[str, Any]
@@ -97,6 +98,15 @@ class BoundingBox:
 
     def calc_distance(self, box: BoundingBox) -> float:
         return math.dist(self.center.to_xy_arr(), box.center.to_xy_arr())
+
+    def calc_iou(self, box: BoundingBox) -> float:
+        box_1 = torch.tensor(
+            [[self.top_left.x, self.top_left.y, self.bot_right.x, self.bot_right.y]]
+        )
+        box_2 = torch.tensor(
+            [[box.top_left.x, box.top_left.y, box.bot_right.x, box.bot_right.y]]
+        )
+        return float(torchvision.ops.box_iou(box_1, box_2)[0].item())
 
 
 def get_device() -> str:

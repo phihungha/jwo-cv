@@ -5,10 +5,20 @@ import multiprocessing as mp
 import os
 from concurrent import futures
 
+import movinets
+import movinets.config
 import toml
 from aiohttp import web
 
-from jwo_cv import app_keys, shop_event, utils, video_client_api
+from jwo_cv import (
+    action_recognizer as ar,
+)
+from jwo_cv import (
+    app_keys,
+    shop_event,
+    utils,
+    video_client_api,
+)
 
 
 def setup_logging():
@@ -50,8 +60,11 @@ async def setup_and_cleanup(app: web.Application):
 
 
 def main():
-    app_config_path = os.getenv("JWO_CV_CONFIG_PATH") or "jwo_cv/config.dev.toml"
+    app_config_path = os.getenv("JWO_CV_CONFIG_PATH") or "config.toml"
     app_config = toml.load(app_config_path)
+
+    # Download pre-trained weights if not exist
+    movinets.MoViNet(ar.MODEL_CONFIG, causal=True, pretrained=True)
 
     app = web.Application()
     app[app_keys.config] = app_config

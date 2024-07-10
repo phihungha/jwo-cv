@@ -12,8 +12,8 @@ from jwo_cv import shop_event, utils
 from jwo_cv.utils import Config
 
 # Model config reference: https://github.com/Atze00/MoViNet-pytorch
-MODEL_CONFIG = movinets.config._C.MODEL.MoViNetA2
-IMAGE_SIZE = (224, 224)
+MODEL_CONFIG = movinets.config._C.MODEL.MoViNetA1
+IMAGE_SIZE = (172, 172)
 
 PICK_CLASS_ID = 0
 RETURN_CLASS_ID = 1
@@ -50,7 +50,6 @@ class ActionRecognizer:
         self,
         model: movinets.MoViNet,
         min_confidence: float,
-        min_detection_frame_span: int,
         device: str,
     ) -> None:
         """Recognizes action in video using Movinet.
@@ -58,12 +57,10 @@ class ActionRecognizer:
         Args:
             model (movinets.MoViNet): Model
             min_confidence (float): Minimum detection confidence
-            max_detection_frame_span (int): Min num of frames between detection
             device (str): Device to run model on
         """
 
         self.min_confidence = min_confidence
-        self.min_action_frame_span = min_detection_frame_span
         self.device = device
 
         self.model = model.to(self.device).eval()
@@ -75,9 +72,6 @@ class ActionRecognizer:
                 transforms.Resize(size=IMAGE_SIZE),
             ]
         )
-
-        self.buffer_frame_count = 0
-        self.frame_count_since_last_action = 0
 
     @classmethod
     def from_config(cls, config: Config) -> ActionRecognizer:
@@ -91,7 +85,6 @@ class ActionRecognizer:
         return ActionRecognizer(
             model,
             config["min_confidence"],
-            config["min_action_frame_span"],
             device,
         )
 
@@ -105,32 +98,29 @@ class ActionRecognizer:
             tuple[Action | None, tuple[Action, Action]]: Actions and recognized action
         """
 
-        self.frame_count_since_last_action += 1
-
         input: torch.Tensor = self.image_transforms(image).to(self.device)
         # Add frame and batch dimension
         input = input[None, :, None]
 
         output: torch.Tensor = self.model(input)[0]
-        action_probs = output.softmax(0)
+        action_probs = output.softmax(dim=0)
 
-        pick_prob = action_probs[PICK_CLASS_ID].item()
-        return_prob = action_probs[RETURN_CLASS_ID].item()
+        pick_prob = float(action_probs[PICK_CLASS_ID].item())
+        return_prob = float(action_probs[RETURN_CLASS_ID].item())
 
         pick_action = Action(shop_event.ActionType.PICK, pick_prob)
         return_action = Action(shop_event.ActionType.RETURN, return_prob)
         actions = (pick_action, return_action)
 
-        if pick_prob >= return_prob:
+        best_action_class = action_probs.argmax(dim=0).item()
+        if best_action_class == PICK_CLASS_ID:
             best_action = pick_action
-        else:
+        elif best_action_class == RETURN_CLASS_ID:
             best_action = return_action
+        else:
+            best_action = None
 
-        if (
-            best_action.confidence >= self.min_confidence
-            and self.frame_count_since_last_action >= self.min_action_frame_span
-        ):
-            self.frame_count_since_last_action = 0
+        if best_action and best_action.confidence >= self.min_confidence:
             self.model.clean_activation_buffers()
             return actions, best_action
 
