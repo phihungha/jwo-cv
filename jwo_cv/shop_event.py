@@ -6,10 +6,7 @@ import queue
 from dataclasses import dataclass
 from enum import Enum
 
-import socketio
-import socketio.exceptions
-
-from jwo_cv.utils import AppException
+import kafka
 
 logger = logging.getLogger(__name__)
 
@@ -55,33 +52,19 @@ def create_message(event: ShopEvent) -> dict:
 
 
 async def begin_emit_shop_events(
-    url: str,
-    namespace: str,
+    kafka_producer: kafka.KafkaProducer,
     event_queue: queue.Queue[ShopEvent],
 ) -> None:
     """Start emitting shopping events from a multiprocessing queue
-    to server at provided URL.
+    to Kafka.
 
     Args:
-        url (str): Server URL
-        namespace (str): Namespace
+        kafka_producer (kafka.KafkaProducer): Kafka producer
         event_queue (mp.Queue[ShopEvent]): Shopping event queue
     """
 
-    async with socketio.AsyncSimpleClient() as sio:
-        try:
-            await sio.connect(url, namespace=namespace)
-        except socketio.exceptions.ConnectionError as err:
-            raise AppException(
-                f"Failed to connect to server {url} on {namespace} to emit shop events."
-            ) from err
-
-        logger.info(
-            f"Connected to server {url} on {namespace} and start emitting events."
-        )
-
-        async_loop = asyncio.get_event_loop()
-        while True:
-            event = await async_loop.run_in_executor(None, event_queue.get)
-            message = create_message(event)
-            await sio.emit("update", message)
+    async_loop = asyncio.get_event_loop()
+    while True:
+        event = await async_loop.run_in_executor(None, event_queue.get)
+        message = create_message(event)
+        kafka_producer.send("shop-event", message)
