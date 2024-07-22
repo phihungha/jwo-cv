@@ -100,7 +100,7 @@ class VisionAnalyzer:
         self.item_detector = item_detector
         self.event_queue = event_queue
         self.last_items_seen_frame_count = MAX_LAST_ITEMS_SEEN_FRAME_COUNT
-        self.shop_event_just_detected = False
+        self.just_detected_action: shop_event.ActionType | None = None
 
     @classmethod
     def from_config(
@@ -141,12 +141,12 @@ class VisionAnalyzer:
             action = None
 
         if self.last_items_seen_frame_count == MAX_LAST_ITEMS_SEEN_FRAME_COUNT:
-            self.shop_event_just_detected = False
+            self.just_detected_action = None
 
-        if action and items and not self.shop_event_just_detected:
+        if action and items and self.just_detected_action != action:
             item_counts = dict(Counter(map(lambda i: i.class_id, items)))
             event = shop_event.ShopEvent(action.type, item_counts)
-            self.shop_event_just_detected = True
+            self.just_detected_action = action.type
             logger.info(event)
 
             if self.event_queue is not None:
