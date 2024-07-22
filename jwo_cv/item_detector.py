@@ -118,18 +118,21 @@ class ItemDetector(Detector):
             config["item"]["min_hand_iou"],
         )
 
-    def detect(self, image: MatLike) -> tuple[list[Detection], list[Detection]]:
+    def detect(self, image: MatLike) -> list[Detection]:
         """Detects and classifies items hold in hands in an image.
 
         Args:
             image (MatLike): Image
 
         Returns:
-            tuple[list[Detection], list[Detection]]: Item and hand detections
+            list[Detection]: Item detections
         """
 
-        items = super().detect(image)
         hands = self.hand_detector.detect(image)
+        if not hands:
+            return []
+
+        items = super().detect(image)
 
         def filter_item(item: Detection):
             return any(
@@ -137,4 +140,5 @@ class ItemDetector(Detector):
             )
 
         items_in_hands = list(filter(filter_item, items))
-        return items_in_hands, hands
+
+        return items_in_hands

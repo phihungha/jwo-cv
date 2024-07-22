@@ -14,6 +14,8 @@ from jwo_cv import item_detector as id
 from jwo_cv import shop_event, utils
 from jwo_cv.utils import AppException, Config
 
+MAX_LAST_ITEMS_SEEN_FRAME_COUNT = 10
+
 TEXT_FONT = cv2.FONT_HERSHEY_SIMPLEX
 TEXT_LINE_STYLE = cv2.LINE_AA
 
@@ -24,14 +26,13 @@ ANNO_LINE_WEIGHT = 2
 
 ACTION_TEXT_ORIGIN = (50, 50)
 ACTION_TEXT_COLOR = (0, 255, 0)
-ACTION_TEXT_SCALE = 0.6
+ACTION_TEXT_SCALE = 0.8
 
 logger = utils.get_multiprocess_logger()
 
 
 def annotate_debug_info(
     frame: cv2_t.MatLike,
-    hands: Sequence[id.Detection],
     items: Sequence[id.Detection],
     actions: Sequence[ar.Action],
 ) -> np.ndarray:
@@ -39,7 +40,6 @@ def annotate_debug_info(
 
     Args:
         frame (cv2_t.MatLike): Image
-        hands (Sequence[id.Detection]): Hand detections
         items (Sequence[id.Detection]): Item detections
 
     Returns:
@@ -47,15 +47,6 @@ def annotate_debug_info(
     """
 
     annotator = plotting.Annotator(frame)
-
-    for hand in hands:
-        logger.debug(hand)
-        annotator.box_label(
-            hand.box.to_xyxy_arr(),
-            f"Hand ({round(hand.confidence, 3):.1%})",
-            HAND_ANNO_BOX_COLOR,
-            ANNO_TEXT_COLOR,
-        )
 
     for item in items:
         logger.debug(item)
@@ -81,7 +72,7 @@ def annotate_debug_info(
             lineType=cv2.LINE_AA,
         )
 
-    return annotator.result()
+    return frame
 
 
 class VisionAnalyzer:
@@ -107,7 +98,8 @@ class VisionAnalyzer:
         self.action_recognizer = action_recognizer
         self.item_detector = item_detector
         self.event_queue = event_queue
-        self.just_detected = False
+        self.last_items_seen_frame_count = MAX_LAST_ITEMS_SEEN_FRAME_COUNT + 1
+        self.shop_event_just_detected = False
 
     @classmethod
     def from_config(
@@ -134,21 +126,26 @@ class VisionAnalyzer:
             np.ndarray | None: frame with debug info
         """
 
-        items, hands = self.item_detector.detect(frame)
+        items = self.item_detector.detect(frame)
 
-        if hands:
+        if items:
+            self.last_items_seen_frame_count = 0
+        elif self.last_items_seen_frame_count <= MAX_LAST_ITEMS_SEEN_FRAME_COUNT:
+            self.last_items_seen_frame_count += 1
+
+        if self.last_items_seen_frame_count <= MAX_LAST_ITEMS_SEEN_FRAME_COUNT:
             actions, recognized_action = self.action_recognizer.recognize(frame)
         else:
             self.action_recognizer.model.clean_activation_buffers()
             actions, recognized_action = [], None
 
-        if not items:
-            self.just_detected = False
+        if self.last_items_seen_frame_count > MAX_LAST_ITEMS_SEEN_FRAME_COUNT:
+            self.shop_event_just_detected = False
 
-        if recognized_action and items and not self.just_detected:
+        if recognized_action and items and not self.shop_event_just_detected:
             item_counts = dict(Counter(map(lambda i: i.class_id, items)))
             event = shop_event.ShopEvent(recognized_action.type, item_counts)
-            self.just_detected = True
+            self.shop_event_just_detected = True
             logger.info(event)
 
             if self.event_queue is not None:
@@ -158,4 +155,4 @@ class VisionAnalyzer:
                     raise AppException("Vision event queue is full.")
 
         if debug:
-            return annotate_debug_info(frame, hands, items, actions)
+            return annotate_debug_info(frame, items, actions)
