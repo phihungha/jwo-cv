@@ -140,15 +140,13 @@ class VisionAnalyzer:
             self.action_recognizer.reset()
             action = None
 
-        if self.last_items_seen_frame_count > MAX_LAST_ITEMS_SEEN_FRAME_COUNT:
+        if self.last_items_seen_frame_count == MAX_LAST_ITEMS_SEEN_FRAME_COUNT:
             self.shop_event_just_detected = False
 
         if action and items and not self.shop_event_just_detected:
             item_counts = dict(Counter(map(lambda i: i.class_id, items)))
             event = shop_event.ShopEvent(action.type, item_counts)
-
             self.shop_event_just_detected = True
-
             logger.info(event)
 
             if self.event_queue is not None:
