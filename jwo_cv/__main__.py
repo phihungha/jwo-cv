@@ -7,6 +7,7 @@ import os
 from concurrent import futures
 
 import kafka
+import kafka.errors
 import movinets
 import movinets.config
 import toml
@@ -39,10 +40,14 @@ logger = logging.getLogger("jwo_cv")
 async def setup_and_cleanup(app: web.Application):
     shop_event_config = app[app_keys.config]["shop_event"]
     if shop_event_config["emit"]:
-        kafka_producer = kafka.KafkaProducer(
-            bootstrap_servers=shop_event_config["server"],
-            value_serializer=lambda v: json.dumps(v).encode("utf-8"),
-        )
+        try:
+            kafka_producer = kafka.KafkaProducer(
+                bootstrap_servers=shop_event_config["broker"],
+                value_serializer=lambda v: json.dumps(v).encode("utf-8"),
+            )
+        except kafka.errors.NoBrokersAvailable as err:
+            raise utils.AppException("Kafka broker not available.") from err
+
         shop_event_queue = app[app_keys.shop_event_queue]
         app[app_keys.shop_event_emit_task] = asyncio.create_task(
             shop_event.begin_emit_shop_events(kafka_producer, shop_event_queue)
@@ -91,4 +96,9 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except utils.AppException as err:
+        logger.error(err)
+    except Exception as err:
+        logger.exception(err)

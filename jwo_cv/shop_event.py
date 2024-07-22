@@ -65,6 +65,9 @@ async def begin_emit_shop_events(
 
     async_loop = asyncio.get_event_loop()
     while True:
-        event = await async_loop.run_in_executor(None, event_queue.get)
+        try:
+            event = await async_loop.run_in_executor(None, event_queue.get)
+        except asyncio.CancelledError:
+            return
         message = create_message(event)
         kafka_producer.send("cart-updates", message)
