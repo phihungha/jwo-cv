@@ -9,12 +9,10 @@ server = "localhost:9092"
 enable = true
 
 [analyzers.action]
-enable = true
 model_path = "models/action_recognition_movinet_a1_stream.pth"
 min_confidence = 0.5
 
 [analyzers.item]
-enable = true
 model_path = "models/item_detection_yolov8n.pt"
 min_confidence = 0.5
 min_hand_iou = 0.03

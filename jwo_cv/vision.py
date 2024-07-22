@@ -14,7 +14,7 @@ from jwo_cv import item_detector as id
 from jwo_cv import shop_event, utils
 from jwo_cv.utils import AppException, Config
 
-MAX_LAST_ITEMS_SEEN_FRAME_COUNT = 10
+MAX_LAST_ITEMS_SEEN_FRAME_COUNT = 5
 
 TEXT_FONT = cv2.FONT_HERSHEY_SIMPLEX
 TEXT_LINE_STYLE = cv2.LINE_AA

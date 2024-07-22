@@ -67,4 +67,4 @@ async def begin_emit_shop_events(
     while True:
         event = await async_loop.run_in_executor(None, event_queue.get)
         message = create_message(event)
-        kafka_producer.send("shop-event", message)
+        kafka_producer.send("cart-updates", message)
