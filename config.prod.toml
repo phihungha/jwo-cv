@@ -2,8 +2,8 @@
 port = 6000
 
 [shop_event]
-emit = false
-server = "localhost:9092"
+emit = true
+server = "localhost:9094"
 
 [analyzers]
 enable = true
