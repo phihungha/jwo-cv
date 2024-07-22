@@ -88,14 +88,17 @@ class ActionRecognizer:
             device,
         )
 
-    def recognize(self, image: MatLike) -> tuple[tuple[Action, Action], Action | None]:
+    def reset(self) -> None:
+        self.model.clean_activation_buffers()
+
+    def recognize(self, image: MatLike) -> Action | None:
         """Recognize pick or return action from a video frame.
 
         Args:
             image (MatLike): Video frame
 
         Returns:
-            tuple[Action | None, tuple[Action, Action]]: Actions and recognized action
+           Action | None: Recognized action
         """
 
         input: torch.Tensor = self.image_transforms(image).to(self.device)
@@ -110,7 +113,6 @@ class ActionRecognizer:
 
         pick_action = Action(shop_event.ActionType.PICK, pick_prob)
         return_action = Action(shop_event.ActionType.RETURN, return_prob)
-        actions = (pick_action, return_action)
 
         best_action_class = action_probs.argmax(dim=0).item()
         if best_action_class == PICK_CLASS_ID:
@@ -121,7 +123,7 @@ class ActionRecognizer:
             best_action = None
 
         if best_action and best_action.confidence >= self.min_confidence:
-            self.model.clean_activation_buffers()
-            return actions, best_action
+            self.reset()
+            return best_action
 
-        return actions, None
+        return None

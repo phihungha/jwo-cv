@@ -34,13 +34,14 @@ logger = utils.get_multiprocess_logger()
 def annotate_debug_info(
     frame: cv2_t.MatLike,
     items: Sequence[id.Detection],
-    actions: Sequence[ar.Action],
+    action: ar.Action | None,
 ) -> np.ndarray:
     """Annotate provided image with debug info.
 
     Args:
         frame (cv2_t.MatLike): Image
         items (Sequence[id.Detection]): Item detections
+        action (ar.Action | None): Recognized action
 
     Returns:
         np.ndarray: Annotated image
@@ -52,19 +53,19 @@ def annotate_debug_info(
         logger.debug(item)
         annotator.box_label(
             item.box.to_xyxy_arr(),
-            f"{item.class_name} ({round(item.confidence, 3):.1%})",
+            item.class_name,
             ITEM_ANNO_BOX_COLOR,
             ANNO_TEXT_COLOR,
         )
 
     frame = annotator.result()
 
-    for i, action in enumerate(actions):
-        text = f"{action.type.name}: {action.confidence:.2%}"
+    if action is not None:
+        text = f"{action.type.name}"
         cv2.putText(
             frame,
             text,
-            org=(ACTION_TEXT_ORIGIN[0], ACTION_TEXT_ORIGIN[1] + i * 30),
+            org=ACTION_TEXT_ORIGIN,
             fontFace=TEXT_FONT,
             fontScale=ACTION_TEXT_SCALE,
             color=ACTION_TEXT_COLOR,
@@ -134,18 +135,20 @@ class VisionAnalyzer:
             self.last_items_seen_frame_count += 1
 
         if self.last_items_seen_frame_count <= MAX_LAST_ITEMS_SEEN_FRAME_COUNT:
-            actions, recognized_action = self.action_recognizer.recognize(frame)
+            action = self.action_recognizer.recognize(frame)
         else:
-            self.action_recognizer.model.clean_activation_buffers()
-            actions, recognized_action = [], None
+            self.action_recognizer.reset()
+            action = None
 
         if self.last_items_seen_frame_count > MAX_LAST_ITEMS_SEEN_FRAME_COUNT:
             self.shop_event_just_detected = False
 
-        if recognized_action and items and not self.shop_event_just_detected:
+        if action and items and not self.shop_event_just_detected:
             item_counts = dict(Counter(map(lambda i: i.class_id, items)))
-            event = shop_event.ShopEvent(recognized_action.type, item_counts)
+            event = shop_event.ShopEvent(action.type, item_counts)
+
             self.shop_event_just_detected = True
+
             logger.info(event)
 
             if self.event_queue is not None:
@@ -155,4 +158,4 @@ class VisionAnalyzer:
                     raise AppException("Vision event queue is full.")
 
         if debug:
-            return annotate_debug_info(frame, items, actions)
+            return annotate_debug_info(frame, items, action)
