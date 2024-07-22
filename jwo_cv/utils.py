@@ -26,6 +26,7 @@ class Position:
 
     x: int | float
     y: int | float
+    normalized: bool = False
 
     def __str__(self) -> str:
         return f"({self.x}, {self.y})"
@@ -41,26 +42,35 @@ class Position:
     def denormalize(self, width: int, height: int) -> Position:
         x = round(self.x * width)
         y = round(self.y * height)
-        return Position(x, y)
+        return Position(x, y, False)
 
 
 class BoundingBox:
     """Describes the bounding box of an object detection."""
 
-    def __init__(self, top_left: Position, bot_right: Position) -> None:
+    def __init__(
+        self, top_left: Position, bot_right: Position, normalized: bool = False
+    ) -> None:
         """Describes the bounding box of an object detection.
 
         Args:
             top_left (Position): Top-left corner position
             bottom_right (Position): Bottom-right corner position
+            normalized (bool): True if coordinates are normalized to image size
         """
 
         self.top_left = top_left
         self.bot_right = bot_right
+        self.normalized = normalized
 
-        center_x = round(bot_right.x - (bot_right.x - top_left.x) / 2)
-        center_y = round(bot_right.y - (bot_right.y - top_left.y) / 2)
-        self.center = Position(center_x, center_y)
+        center_x = bot_right.x - (bot_right.x - top_left.x) / 2
+        center_y = bot_right.y - (bot_right.y - top_left.y) / 2
+
+        if not self.normalized:
+            center_x = round(center_x)
+            center_y = round(center_y)
+
+        self.center = Position(center_x, center_y, self.normalized)
 
     def __str__(self) -> str:
         return (
@@ -70,11 +80,14 @@ class BoundingBox:
 
     @classmethod
     def from_xyxy_arr(
-        cls, array: np_types.NDArray | torch.Tensor | Sequence[int | float]
+        cls,
+        array: np_types.NDArray | torch.Tensor | Sequence[int | float],
+        normalized: bool = False,
     ) -> BoundingBox:
         return cls(
             Position(int(array[0]), int(array[1])),
             Position(int(array[2]), int(array[3])),
+            normalized,
         )
 
     def to_xyxy_arr(self) -> np_types.NDArray:
@@ -91,6 +104,7 @@ class BoundingBox:
         return BoundingBox(
             self.top_left.denormalize(width, height),
             self.bot_right.denormalize(width, height),
+            False,
         )
 
     def calc_iou(self, box: BoundingBox) -> float:

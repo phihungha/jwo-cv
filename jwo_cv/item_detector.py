@@ -68,9 +68,8 @@ class Detector:
 
                 class_id = int(result.cls)
                 class_name = self.model.names[class_id]
-                print(result.xyxyn[0])
                 box = BoundingBox.from_xyxy_arr(result.xyxy[0])
-                box_normed = BoundingBox.from_xyxy_arr(result.xyxyn[0])
+                box_normed = BoundingBox.from_xyxy_arr(result.xyxyn[0], normalized=True)
                 detection = Detection(class_id, class_name, confidence, box, box_normed)
                 detections.append(detection)
 
