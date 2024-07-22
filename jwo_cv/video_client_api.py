@@ -215,11 +215,8 @@ class VideoVisionTrack(aiortc.MediaStreamTrack):
 
     async def recv(self):
         video_frame: av_vframe.VideoFrame = await self.input_track.recv()  # type: ignore
-        if video_frame.pts is None:
-            raise AppException("Video frame has no frame count.")
 
         event = asyncio.get_event_loop()
-
         debug_video_ndarray = await event.run_in_executor(
             None,
             self.vision_analyzer.analyze_video_frame,
