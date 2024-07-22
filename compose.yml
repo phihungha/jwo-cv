@@ -1,5 +1,5 @@
 services:
-  jwo-cv-service:
+  cv-service:
     container_name: jwo-cv-service
     image: haphihung55/jwo-cv-service:0.1.0
     build: .
