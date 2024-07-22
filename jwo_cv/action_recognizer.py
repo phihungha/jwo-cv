@@ -64,7 +64,6 @@ class ActionRecognizer:
         self.device = device
 
         self.model = model.to(self.device).eval()
-
         self.image_transforms = transforms.Compose(
             [
                 transforms.ToImage(),

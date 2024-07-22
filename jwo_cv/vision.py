@@ -99,7 +99,7 @@ class VisionAnalyzer:
         self.action_recognizer = action_recognizer
         self.item_detector = item_detector
         self.event_queue = event_queue
-        self.last_items_seen_frame_count = MAX_LAST_ITEMS_SEEN_FRAME_COUNT + 1
+        self.last_items_seen_frame_count = MAX_LAST_ITEMS_SEEN_FRAME_COUNT
         self.shop_event_just_detected = False
 
     @classmethod
@@ -131,7 +131,7 @@ class VisionAnalyzer:
 
         if items:
             self.last_items_seen_frame_count = 0
-        elif self.last_items_seen_frame_count <= MAX_LAST_ITEMS_SEEN_FRAME_COUNT:
+        elif self.last_items_seen_frame_count < MAX_LAST_ITEMS_SEEN_FRAME_COUNT:
             self.last_items_seen_frame_count += 1
 
         if self.last_items_seen_frame_count <= MAX_LAST_ITEMS_SEEN_FRAME_COUNT:
