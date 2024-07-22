@@ -40,11 +40,13 @@ logger = logging.getLogger("jwo_cv")
 async def setup_and_cleanup(app: web.Application):
     shop_event_config = app[app_keys.config]["shop_event"]
     if shop_event_config["emit"]:
+        kafka_broker_server = shop_event_config["broker"]
         try:
             kafka_producer = kafka.KafkaProducer(
-                bootstrap_servers=shop_event_config["broker"],
+                bootstrap_servers=kafka_broker_server,
                 value_serializer=lambda v: json.dumps(v).encode("utf-8"),
             )
+            logger.info("Connected to Kafka broker at %s", kafka_broker_server)
         except kafka.errors.NoBrokersAvailable as err:
             raise utils.AppException("Kafka broker not available.") from err
 
