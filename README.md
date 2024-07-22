@@ -7,7 +7,7 @@ Recognize shopping actions and product items from real-time video stream.
 - YOLOv8 via Ultralytics
 - Movinet via PyTorch
 - OpenCV
-- SocketIO
+- Apache Kafka
 - aiohttp
 - WebRTC via aiortc
 

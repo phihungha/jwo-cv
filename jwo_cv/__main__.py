@@ -1,10 +1,13 @@
 import asyncio
+import json
 import logging
 import logging.config
 import multiprocessing as mp
 import os
 from concurrent import futures
 
+import kafka
+import kafka.errors
 import movinets
 import movinets.config
 import toml
@@ -37,12 +40,19 @@ logger = logging.getLogger("jwo_cv")
 async def setup_and_cleanup(app: web.Application):
     shop_event_config = app[app_keys.config]["shop_event"]
     if shop_event_config["emit"]:
-        url = shop_event_config["url"]
-        namespace = shop_event_config["namespace"]
-        shop_event_queue = app[app_keys.shop_event_queue]
+        kafka_broker_server = shop_event_config["broker"]
+        try:
+            kafka_producer = kafka.KafkaProducer(
+                bootstrap_servers=kafka_broker_server,
+                value_serializer=lambda v: json.dumps(v).encode("utf-8"),
+            )
+            logger.info("Connected to Kafka broker at %s", kafka_broker_server)
+        except kafka.errors.NoBrokersAvailable as err:
+            raise utils.AppException("Kafka broker not available.") from err
 
+        shop_event_queue = app[app_keys.shop_event_queue]
         app[app_keys.shop_event_emit_task] = asyncio.create_task(
-            shop_event.begin_emit_shop_events(url, namespace, shop_event_queue)
+            shop_event.begin_emit_shop_events(kafka_producer, shop_event_queue)
         )
 
     yield
@@ -56,6 +66,7 @@ async def setup_and_cleanup(app: web.Application):
         shop_event_emit_task = app[app_keys.shop_event_emit_task]
         shop_event_emit_task.cancel()
         await shop_event_emit_task
+        kafka_producer.flush()
         logger.debug("Stopped emitting shopping events.")
 
 
@@ -87,4 +98,9 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except utils.AppException as err:
+        logger.error(err)
+    except Exception as err:
+        logger.exception(err)
