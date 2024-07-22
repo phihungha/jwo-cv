@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-import math
 import multiprocessing
 import os
 import sys
@@ -38,6 +37,11 @@ class Position:
         is_in_x = box.top_left.x < self.x < box.bot_right.x
         is_in_y = box.top_left.y < self.y < box.bot_right.y
         return is_in_x and is_in_y
+
+    def denormalize(self, width: int, height: int) -> Position:
+        x = round(self.x * width)
+        y = round(self.y * height)
+        return Position(x, y)
 
 
 class BoundingBox:
@@ -83,8 +87,11 @@ class BoundingBox:
             ]
         )
 
-    def calc_distance(self, box: BoundingBox) -> float:
-        return math.dist(self.center.to_xy_arr(), box.center.to_xy_arr())
+    def denormalize(self, width: int, height: int) -> BoundingBox:
+        return BoundingBox(
+            self.top_left.denormalize(width, height),
+            self.bot_right.denormalize(width, height),
+        )
 
     def calc_iou(self, box: BoundingBox) -> float:
         box_1 = torch.tensor(
