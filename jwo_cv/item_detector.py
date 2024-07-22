@@ -17,6 +17,7 @@ class Detection:
     class_name: str
     confidence: float
     box: BoundingBox
+    box_normed: BoundingBox
 
     def __str__(self) -> str:
         return (
@@ -67,8 +68,10 @@ class Detector:
 
                 class_id = int(result.cls)
                 class_name = self.model.names[class_id]
+                print(result.xyxyn[0])
                 box = BoundingBox.from_xyxy_arr(result.xyxy[0])
-                detection = Detection(class_id, class_name, confidence, box)
+                box_normed = BoundingBox.from_xyxy_arr(result.xyxyn[0])
+                detection = Detection(class_id, class_name, confidence, box, box_normed)
                 detections.append(detection)
 
         return detections

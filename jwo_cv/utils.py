@@ -25,8 +25,8 @@ class AppException(Exception):
 class Position:
     """Describes a (x, y) position of something."""
 
-    x: int
-    y: int
+    x: int | float
+    y: int | float
 
     def __str__(self) -> str:
         return f"({self.x}, {self.y})"
@@ -66,7 +66,7 @@ class BoundingBox:
 
     @classmethod
     def from_xyxy_arr(
-        cls, array: np_types.NDArray | torch.Tensor | Sequence[int]
+        cls, array: np_types.NDArray | torch.Tensor | Sequence[int | float]
     ) -> BoundingBox:
         return cls(
             Position(int(array[0]), int(array[1])),
