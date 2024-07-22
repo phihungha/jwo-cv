@@ -1,10 +1,8 @@
 services:
   jwo-cv-service:
     container_name: jwo-cv-service
-    image: haphihung55/jwo-cv-service:latest
+    image: haphihung55/jwo-cv-service:0.1.0
     build: .
-    environment:
-      - JWO_CV_DEBUG=${JWO_CV_DEBUG:-0}
     ports:
       - ${SERVICE_PORT:-6000}:6000
     deploy:
@@ -14,4 +12,6 @@ services:
             - driver: nvidia
               count: 1
               capabilities: [ gpu ]
+    environment:
+      - JWO_CV_DEBUG=${JWO_CV_DEBUG:-0}
     command: python -m jwo_cv
