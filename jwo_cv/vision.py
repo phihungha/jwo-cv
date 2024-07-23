@@ -14,7 +14,7 @@ from jwo_cv import item_detector as id
 from jwo_cv import shop_event, utils
 from jwo_cv.utils import AppException, Config
 
-MAX_LAST_ITEMS_SEEN_FRAME_COUNT = 5
+LAST_ITEMS_SEEN_FRAME_THRES = 15
 
 TEXT_FONT = cv2.FONT_HERSHEY_SIMPLEX
 TEXT_LINE_STYLE = cv2.LINE_AA
@@ -99,7 +99,7 @@ class VisionAnalyzer:
         self.action_recognizer = action_recognizer
         self.item_detector = item_detector
         self.event_queue = event_queue
-        self.last_items_seen_frame_count = MAX_LAST_ITEMS_SEEN_FRAME_COUNT
+        self.last_items_seen_frame_count = LAST_ITEMS_SEEN_FRAME_THRES
         self.just_detected_action: shop_event.ActionType | None = None
 
     @classmethod
@@ -131,16 +131,16 @@ class VisionAnalyzer:
 
         if items:
             self.last_items_seen_frame_count = 0
-        elif self.last_items_seen_frame_count < MAX_LAST_ITEMS_SEEN_FRAME_COUNT:
+        elif self.last_items_seen_frame_count < LAST_ITEMS_SEEN_FRAME_THRES:
             self.last_items_seen_frame_count += 1
 
-        if self.last_items_seen_frame_count <= MAX_LAST_ITEMS_SEEN_FRAME_COUNT:
+        if self.last_items_seen_frame_count < LAST_ITEMS_SEEN_FRAME_THRES:
             action = self.action_recognizer.recognize(frame)
         else:
             self.action_recognizer.reset()
             action = None
 
-        if self.last_items_seen_frame_count == MAX_LAST_ITEMS_SEEN_FRAME_COUNT:
+        if self.last_items_seen_frame_count == LAST_ITEMS_SEEN_FRAME_THRES:
             self.just_detected_action = None
 
         if action and items and self.just_detected_action != action:

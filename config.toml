@@ -14,9 +14,9 @@ min_confidence = 0.5
 
 [analyzers.item]
 model_path = "models/item_detection_yolov8n.pt"
-min_confidence = 0.5
+min_confidence = 0.55
 min_hand_iou = 0.03
 
 [analyzers.hand]
 model_path = "models/hand_detection_yolov8n.pt"
-min_confidence = 0.5
+min_confidence = 0.7
