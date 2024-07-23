@@ -1,5 +1,5 @@
 services:
-  jwo-cv-service:
+  cv-service:
     environment:
       - JWO_CV_CONFIG_PATH=/app/config.yml
     volumes:

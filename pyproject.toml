@@ -19,6 +19,7 @@ movinet-pytorch = { git = "https://github.com/Atze00/MoViNet-pytorch.git" }
 aiortc = "^1.9.0"
 aiohttp = { version = "^3.9.5", extras = ["speedups"] }
 kafka-python = "^2.0.2"
+opencv-python-headless = "^4.10.0.84"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.5.0"

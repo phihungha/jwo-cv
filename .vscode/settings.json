@@ -19,6 +19,7 @@
         "probs",
         "Pyenv",
         "softmax",
+        "THRES",
         "torchvision",
         "unsqueeze",
         "vframe",
