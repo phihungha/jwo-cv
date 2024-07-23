@@ -14,7 +14,7 @@ from jwo_cv import item_detector as id
 from jwo_cv import shop_event, utils
 from jwo_cv.utils import AppException, Config
 
-LAST_ITEMS_SEEN_FRAME_THRES = 15
+LAST_ITEMS_SEEN_FRAME_THRES = 30
 
 TEXT_FONT = cv2.FONT_HERSHEY_SIMPLEX
 TEXT_LINE_STYLE = cv2.LINE_AA
@@ -26,7 +26,7 @@ ANNO_LINE_WEIGHT = 2
 
 ACTION_TEXT_ORIGIN = (50, 50)
 ACTION_TEXT_COLOR = (0, 255, 0)
-ACTION_TEXT_SCALE = 0.8
+ACTION_TEXT_SCALE = 1
 
 logger = utils.get_multiprocess_logger()
 
